@@ -22,4 +22,4 @@
 
    Replace the example UID strings with the actual UIDs from Firebase Authentication → Users. Choose `editor` for job entry/deletion access or `viewer` for read-only access. Update existing member records to include a role. Only active editors can write; active editors and viewers can read. Member records and role changes are managed in the Firebase console, not by the website.
 5. Serve the folder over HTTP(S) (not by opening `index.html` directly). Job bags are shared in `days/YYYY-MM-DD/bags`, with the date based on `America/Toronto`.
-6. Editors can add and remove job bags. Both roles can open **Summary**, select a day, and view daily totals with a week chart (Tuesday–Saturday) or a calendar-month chart.
+6. Editors can add and remove job bags. Both roles can open **Summary**, select a day, and view daily totals with a calendar-week chart (Sunday–Saturday) or a calendar-month chart. Weekly and monthly averages are calculated per calendar day.

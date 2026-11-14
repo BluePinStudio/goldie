@@ -22,6 +22,16 @@ const elements = {
   selectedDayDate: document.querySelector("#selected-day-date"),
   selectedDayList: document.querySelector("#selected-day-list"),
   selectedDayEmpty: document.querySelector("#selected-day-empty"),
+  weekTotalLabel: document.querySelector("#week-total-label"),
+  weekTotal: document.querySelector("#week-total"),
+  weekAverage: document.querySelector("#week-average"),
+  weekChange: document.querySelector("#week-change"),
+  weekChangeLabel: document.querySelector("#week-change-label"),
+  monthTotalLabel: document.querySelector("#month-total-label"),
+  monthTotal: document.querySelector("#month-total"),
+  monthAverage: document.querySelector("#month-average"),
+  monthChange: document.querySelector("#month-change"),
+  monthChangeLabel: document.querySelector("#month-change-label"),
   summaryError: document.querySelector("#summary-error"),
   weekRange: document.querySelector("#week-range"),
   monthRange: document.querySelector("#month-range"),
@@ -121,17 +131,25 @@ function shiftDateKey(dateKey, offset) {
   return date.toISOString().slice(0, 10);
 }
 
-function businessWeekDates(dateKey) {
+function calendarWeekDates(dateKey) {
   const day = new Date(`${dateKey}T12:00:00Z`).getUTCDay();
-  const daysSinceTuesday = (day - 2 + 7) % 7;
-  const tuesday = shiftDateKey(dateKey, -daysSinceTuesday);
-  return Array.from({ length: 5 }, (_, index) => shiftDateKey(tuesday, index));
+  const sunday = shiftDateKey(dateKey, -day);
+  return Array.from({ length: 7 }, (_, index) => shiftDateKey(sunday, index));
 }
 
 function calendarMonthDates(dateKey) {
   const [year, month] = dateKey.split("-").map(Number);
   const dayCount = new Date(Date.UTC(year, month, 0)).getUTCDate();
   return Array.from({ length: dayCount }, (_, index) => `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`);
+}
+
+function previousCalendarMonthDates(dateKey) {
+  const [year, month] = dateKey.split("-").map(Number);
+  const previousMonth = new Date(Date.UTC(year, month - 2, 1));
+  const previousYear = previousMonth.getUTCFullYear();
+  const previousMonthNumber = previousMonth.getUTCMonth() + 1;
+  const dayCount = new Date(Date.UTC(previousYear, previousMonthNumber, 0)).getUTCDate();
+  return Array.from({ length: dayCount }, (_, index) => `${previousYear}-${String(previousMonthNumber).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`);
 }
 
 function formatDay(dateKey) {
@@ -539,14 +557,84 @@ function renderSalesChart(dateKeys, bagsByDate) {
   });
 }
 
+function reportPeriodDates(periodDates, today) {
+  const first = periodDates[0];
+  const last = periodDates[periodDates.length - 1];
+  if (!first || first > today) return { dates: [], toDate: true };
+  if (last >= today) {
+    return {
+      dates: periodDates.filter((date) => date <= today),
+      toDate: true,
+    };
+  }
+  return { dates: periodDates, toDate: false };
+}
+
+function periodMetrics(dateKeys, bagsByDate) {
+  const total = dateKeys.reduce((sum, date) => {
+    const bags = bagsByDate.get(date) || [];
+    return sum + bags.reduce((bagSum, job) => bagSum + roundToNearestFive(Number(job.total) || 0), 0);
+  }, 0);
+  const loggedDays = dateKeys.filter((date) => (bagsByDate.get(date) || []).length > 0).length;
+  return {
+    total,
+    average: loggedDays ? total / loggedDays : 0,
+  };
+}
+
+function formatPeriodChange(currentTotal, previousTotal) {
+  if (previousTotal === 0) return currentTotal === 0 ? "0%" : "New";
+  const change = ((currentTotal - previousTotal) / previousTotal) * 100;
+  const prefix = change > 0 ? "+" : "";
+  return `${prefix}${change.toFixed(1)}%`;
+}
+
+function renderPeriodMetrics(type, currentDates, previousDates, bagsByDate, toDate) {
+  const current = periodMetrics(currentDates, bagsByDate);
+  const previous = periodMetrics(previousDates, bagsByDate);
+  const isWeek = type === "week";
+  const label = isWeek ? "WEEK" : "MONTH";
+  const totalElement = isWeek ? elements.weekTotal : elements.monthTotal;
+  const averageElement = isWeek ? elements.weekAverage : elements.monthAverage;
+  const changeElement = isWeek ? elements.weekChange : elements.monthChange;
+  const totalLabelElement = isWeek ? elements.weekTotalLabel : elements.monthTotalLabel;
+  const changeLabelElement = isWeek ? elements.weekChangeLabel : elements.monthChangeLabel;
+
+  totalLabelElement.textContent = `${label} ${toDate ? "TO DATE" : "TOTAL"}`;
+  changeLabelElement.textContent = `VS PREV. ${label}${toDate ? " TO DATE" : ""}`;
+  totalElement.textContent = money(current.total);
+  averageElement.textContent = money(current.average);
+  changeElement.textContent = formatPeriodChange(current.total, previous.total);
+  changeElement.classList.toggle("change-positive", current.total > previous.total);
+  changeElement.classList.toggle("change-negative", current.total < previous.total);
+  changeElement.title = `${money(current.total)} compared with ${money(previous.total)} in the previous ${label.toLowerCase()}`;
+}
+
 async function loadSummary() {
   if (!database || !currentUser || !elements.summaryDate.value) return;
   const request = ++summaryRequest;
   const selectedDate = elements.summaryDate.value;
-  const chartDates = summaryRange === "week"
-    ? businessWeekDates(selectedDate)
-    : calendarMonthDates(selectedDate);
-  const dateKeys = [...new Set([selectedDate, ...chartDates])];
+  const today = torontoDateKey();
+  const weekDates = calendarWeekDates(selectedDate);
+  const monthDates = calendarMonthDates(selectedDate);
+  const weekReport = reportPeriodDates(weekDates, today);
+  const monthReport = reportPeriodDates(monthDates, today);
+  const previousWeekDates = weekReport.dates.map((date) => shiftDateKey(date, -7));
+  const monthEnd = monthReport.dates[monthReport.dates.length - 1];
+  const monthCutoffDay = monthEnd ? Number(monthEnd.slice(-2)) : 0;
+  const previousMonthDates = previousCalendarMonthDates(selectedDate);
+  const priorMonthBoundedDates = monthReport.toDate
+    ? previousMonthDates.filter((date) => Number(date.slice(-2)) <= monthCutoffDay)
+    : previousMonthDates;
+  const chartDates = summaryRange === "week" ? weekDates : monthDates;
+  const dateKeys = [...new Set([
+    selectedDate,
+    ...chartDates,
+    ...weekReport.dates,
+    ...previousWeekDates,
+    ...monthReport.dates,
+    ...priorMonthBoundedDates,
+  ])];
   elements.summaryError.hidden = true;
   elements.selectedDayList.innerHTML = '<p class="loading-message">Loading day summary…</p>';
   elements.selectedDayEmpty.hidden = true;
@@ -561,11 +649,13 @@ async function loadSummary() {
     const bagsByDate = new Map(entries);
     renderSelectedDay(selectedDate, bagsByDate.get(selectedDate) || []);
     renderSalesChart(chartDates, bagsByDate);
+    renderPeriodMetrics("week", weekReport.dates, previousWeekDates, bagsByDate, weekReport.toDate && weekReport.dates.length < weekDates.length);
+    renderPeriodMetrics("month", monthReport.dates, priorMonthBoundedDates, bagsByDate, monthReport.toDate);
 
     if (summaryRange === "week") {
       const first = chartDates[0];
       const last = chartDates[chartDates.length - 1];
-      elements.chartCaption.textContent = `${formatDay(first)} – ${formatDay(last)} · Tuesday to Saturday`;
+      elements.chartCaption.textContent = `${formatDay(first)} – ${formatDay(last)}`;
     } else {
       const date = new Date(`${selectedDate}T12:00:00Z`);
       elements.chartCaption.textContent = new Intl.DateTimeFormat(undefined, {
