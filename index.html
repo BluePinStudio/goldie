@@ -36,6 +36,12 @@
       </section>
 
       <main id="app-shell" hidden>
+        <nav class="view-nav" aria-label="App pages">
+          <button class="view-tab is-active" id="jobs-tab" type="button" aria-pressed="true">Jobs</button>
+          <button class="view-tab" id="summary-tab" type="button" aria-pressed="false">Summary</button>
+          <span class="role-badge" id="role-badge"></span>
+        </nav>
+        <div id="jobs-view">
         <section class="summary-grid" aria-label="Today's summary">
           <article class="summary-card summary-primary">
             <div class="summary-top"><span class="summary-label">TODAY'S TOTAL</span><span class="summary-symbol">$</span></div>
@@ -60,7 +66,7 @@
             </div>
             <form id="job-form">
               <label class="sr-only" for="job-reference">Reference #</label>
-              <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 214 · Ellis" autocomplete="off" />
+              <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 160893" autocomplete="off" />
 
               <div class="field-row" id="piece-fields">
                 <div class="field">
@@ -112,6 +118,22 @@
                   <span class="micro-copy" id="task-hint">Select all that apply</span>
                 </div>
                 <div id="task-list" class="task-list"></div>
+                <div class="other-work">
+                  <label class="other-work-toggle" for="other-work-enabled">
+                    <input class="task-input" id="other-work-enabled" type="checkbox" name="other-work-enabled">
+                    <span>Other</span>
+                  </label>
+                  <div class="other-work-fields" id="other-work-fields" hidden>
+                    <div class="field">
+                      <label class="field-label" for="other-work-name">Job</label>
+                      <input class="text-input" id="other-work-name" name="other-work-name" type="text" maxlength="80" placeholder="Describe the job" autocomplete="off">
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="other-work-price">Price (CAD)</label>
+                      <input class="text-input" id="other-work-price" name="other-work-price" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="0.00">
+                    </div>
+                  </div>
+                </div>
                 <p class="task-footnote" id="task-footnote" hidden></p>
               </div>
 
@@ -148,6 +170,54 @@
             </div>
           </section>
         </div>
+        </div>
+        <section class="summary-view" id="summary-view" aria-labelledby="summary-heading" hidden>
+          <div class="summary-page-heading">
+            <h1 id="summary-heading">Summary</h1>
+            <label class="date-picker-label" for="summary-date">Day</label>
+            <input class="text-input date-picker" id="summary-date" type="date">
+          </div>
+          <section class="summary-grid period-stats" aria-label="Selected day summary">
+            <article class="summary-card summary-primary">
+              <div class="summary-top"><span class="summary-label">DAY TOTAL</span><span class="summary-symbol">$</span></div>
+              <p class="summary-value" id="selected-total">$0</p>
+            </article>
+            <article class="summary-card">
+              <div class="summary-top"><span class="summary-label">JOB BAGS</span><span class="summary-symbol summary-symbol-muted">▤</span></div>
+              <p class="summary-value" id="selected-count">0</p>
+            </article>
+            <article class="summary-card">
+              <div class="summary-top"><span class="summary-label">AVERAGE / BAG</span><span class="summary-symbol summary-symbol-muted">↗</span></div>
+              <p class="summary-value" id="selected-average">$0</p>
+            </article>
+          </section>
+          <section class="panel chart-panel" aria-labelledby="chart-heading">
+            <div class="panel-heading chart-heading">
+              <div>
+                <h2 id="chart-heading">Sales</h2>
+                <p class="chart-caption" id="chart-caption"></p>
+              </div>
+              <div class="chart-toggle" role="group" aria-label="Chart range">
+                <button class="chart-range is-active" id="week-range" type="button" aria-pressed="true">Week</button>
+                <button class="chart-range" id="month-range" type="button" aria-pressed="false">Month</button>
+              </div>
+            </div>
+            <div class="chart-scroll" id="chart-scroll">
+              <div class="sales-chart" id="sales-chart" role="group" aria-label="Job totals by day"></div>
+            </div>
+          </section>
+          <section class="panel day-summary-panel" aria-labelledby="selected-day-heading">
+            <div class="panel-heading bags-heading">
+              <div>
+                <h2 id="selected-day-heading">Selected day</h2>
+                <time class="bags-date" id="selected-day-date"></time>
+              </div>
+            </div>
+            <div class="bag-list" id="selected-day-list"></div>
+            <div class="empty-state" id="selected-day-empty" hidden><h3>No job bags for this day.</h3></div>
+          </section>
+          <p class="summary-error" id="summary-error" role="alert" hidden></p>
+        </section>
       </main>
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </div>

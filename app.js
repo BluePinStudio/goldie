@@ -10,6 +10,23 @@ const elements = {
   accountBar: document.querySelector("#account-bar"),
   accountName: document.querySelector("#account-name"),
   signOut: document.querySelector("#sign-out"),
+  jobsTab: document.querySelector("#jobs-tab"),
+  summaryTab: document.querySelector("#summary-tab"),
+  jobsView: document.querySelector("#jobs-view"),
+  summaryView: document.querySelector("#summary-view"),
+  roleBadge: document.querySelector("#role-badge"),
+  summaryDate: document.querySelector("#summary-date"),
+  selectedTotal: document.querySelector("#selected-total"),
+  selectedCount: document.querySelector("#selected-count"),
+  selectedAverage: document.querySelector("#selected-average"),
+  selectedDayDate: document.querySelector("#selected-day-date"),
+  selectedDayList: document.querySelector("#selected-day-list"),
+  selectedDayEmpty: document.querySelector("#selected-day-empty"),
+  summaryError: document.querySelector("#summary-error"),
+  weekRange: document.querySelector("#week-range"),
+  monthRange: document.querySelector("#month-range"),
+  chartCaption: document.querySelector("#chart-caption"),
+  salesChart: document.querySelector("#sales-chart"),
   bagsDate: document.querySelector("#bags-date"),
   form: document.querySelector("#job-form"),
   itemType: document.querySelector("#item-type"),
@@ -23,6 +40,10 @@ const elements = {
   ringSection: document.querySelector("#ring-section"),
   widthChoices: document.querySelector("#width-choices"),
   taskList: document.querySelector("#task-list"),
+  otherWorkEnabled: document.querySelector("#other-work-enabled"),
+  otherWorkFields: document.querySelector("#other-work-fields"),
+  otherWorkName: document.querySelector("#other-work-name"),
+  otherWorkPrice: document.querySelector("#other-work-price"),
   taskHint: document.querySelector("#task-hint"),
   taskFootnote: document.querySelector("#task-footnote"),
   estimate: document.querySelector("#estimate-value"),
@@ -42,6 +63,9 @@ const elements = {
 let catalog;
 let jobs = [];
 let currentUser = null;
+let canEdit = false;
+let summaryRange = "week";
+let summaryRequest = 0;
 let database;
 let firebaseAuth;
 let firebaseModules;
@@ -59,6 +83,25 @@ function torontoDateKey(date = new Date()) {
   }).formatToParts(date);
   const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+function shiftDateKey(dateKey, offset) {
+  const date = new Date(`${dateKey}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
+function businessWeekDates(dateKey) {
+  const day = new Date(`${dateKey}T12:00:00Z`).getUTCDay();
+  const daysSinceTuesday = (day - 2 + 7) % 7;
+  const tuesday = shiftDateKey(dateKey, -daysSinceTuesday);
+  return Array.from({ length: 5 }, (_, index) => shiftDateKey(tuesday, index));
+}
+
+function calendarMonthDates(dateKey) {
+  const [year, month] = dateKey.split("-").map(Number);
+  const dayCount = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return Array.from({ length: dayCount }, (_, index) => `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`);
 }
 
 function formatDay(dateKey) {
@@ -175,6 +218,10 @@ function renderOptions() {
 function updateItemType() {
   const type = elements.itemType.value;
   const isCustom = type === "custom";
+  elements.otherWorkEnabled.checked = false;
+  elements.otherWorkName.value = "";
+  elements.otherWorkPrice.value = "";
+  elements.otherWorkFields.hidden = true;
   elements.materialField.hidden = isCustom;
   elements.goldColourSection.hidden = isCustom || !elements.material.value.startsWith("gold-");
   elements.ringSection.hidden = type !== "ring";
@@ -286,6 +333,16 @@ function getSelection() {
       : rates.setup + rates.unit * quantity;
     return [{ ...task, quantity, unitPrice: rates.unit, taskTotal }];
   });
+  if (elements.otherWorkEnabled.checked) {
+    const price = roundToNearestFive(Number(elements.otherWorkPrice.value));
+    tasks.push({
+      id: "other",
+      name: elements.otherWorkName.value.trim(),
+      quantity: 1,
+      unitPrice: price,
+      taskTotal: price,
+    });
+  }
   const total = roundToNearestFive(tasks.reduce((sum, task) => sum + task.taskTotal, 0));
   return { type, material, color, width, tasks, total };
 }
@@ -303,6 +360,7 @@ function showError(message) {
 
 function render() {
   if (!catalog) return;
+  document.querySelector(".entry-panel").hidden = !canEdit;
   const total = jobs.reduce((sum, job) => sum + roundToNearestFive(job.total), 0);
   const count = jobs.length;
   const formattedTotal = money(total);
@@ -313,42 +371,53 @@ function render() {
   elements.averageValue.textContent = money(count ? total / count : 0);
   elements.emptyState.hidden = count > 0;
   elements.bagsTotal.hidden = count === 0;
-  elements.clearButton.hidden = count === 0;
-  elements.bagList.innerHTML = jobs.map((job) => {
-    const taskChips = (Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {})).map((task) => {
-      const quantity = task.sizeFactor
-        ? ` · ${task.quantity} sizes`
-        : task.characterFactor
-          ? ` · ${task.quantity} characters`
-        : task.quantity > 1 ? ` × ${task.quantity}` : "";
-      return `<span class="detail-chip">${escapeHtml(task.name)}${quantity}</span>`;
-    }).join("");
-    const descriptors = job.type === "custom"
-      ? ["Custom", job.customItem]
-      : [job.type === "chain" ? "necklace" : job.type, job.materialName, job.goldColourName, job.widthName];
-    return `
-      <article class="bag-card">
-        <div class="bag-topline">
-          <div class="bag-title-wrap">
-            <p class="bag-reference">${escapeHtml(job.reference || job.customItem || "Untitled job bag")}</p>
-            <p class="bag-subtitle">${escapeHtml(descriptors.filter(Boolean).join(" · "))}</p>
-          </div>
-          <div class="bag-price-wrap">
-            <strong class="bag-price">${money(job.total)}</strong>
-            <button class="remove-button" type="button" data-remove="${escapeHtml(job.id)}" aria-label="Remove ${escapeHtml(job.reference || "job bag")}">×</button>
-          </div>
-        </div>
-        <div class="bag-details">${taskChips}</div>
-        ${job.notes ? `<p class="bag-notes">${escapeHtml(job.notes)}</p>` : ""}
-        <span class="staff-chip">${escapeHtml(job.createdByName || "Staff")}</span>
-      </article>
-    `;
-  }).join("");
+  elements.clearButton.hidden = count === 0 || !canEdit;
+  elements.bagList.innerHTML = jobs.map((job) => renderBagCard(job, canEdit)).join("");
   elements.bagList.querySelectorAll("[data-remove]").forEach((button) => {
     button.addEventListener("click", () => {
       removeJob(button.dataset.remove);
     });
   });
+}
+
+function renderBagCard(job, removable) {
+  const taskChips = (Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {})).map((task) => {
+    const quantity = task.sizeFactor
+      ? ` · ${task.quantity} sizes`
+      : task.characterFactor
+        ? ` · ${task.quantity} characters`
+        : task.quantity > 1 ? ` × ${task.quantity}` : "";
+    const manualPrice = task.id === "other" && Number.isFinite(Number(task.price))
+      ? ` · ${money(task.price)}`
+      : "";
+    return `<span class="detail-chip">${escapeHtml(task.name)}${quantity}${manualPrice}</span>`;
+  }).join("");
+  const descriptors = job.type === "custom"
+    ? ["Custom", job.customItem]
+    : [job.type === "chain" ? "necklace" : job.type, job.materialName, job.goldColourName, job.widthName];
+  return `
+    <article class="bag-card">
+      <div class="bag-topline">
+        <div class="bag-title-wrap">
+          <p class="bag-reference">${escapeHtml(job.reference || job.customItem || "Untitled job bag")}</p>
+          <p class="bag-subtitle">${escapeHtml(descriptors.filter(Boolean).join(" · "))}</p>
+        </div>
+        <div class="bag-price-wrap">
+          <strong class="bag-price">${money(job.total)}</strong>
+          ${removable ? `<button class="remove-button" type="button" data-remove="${escapeHtml(job.id)}" aria-label="Remove ${escapeHtml(job.reference || "job bag")}">×</button>` : ""}
+        </div>
+      </div>
+      <div class="bag-details">${taskChips}</div>
+      ${job.notes ? `<p class="bag-notes">${escapeHtml(job.notes)}</p>` : ""}
+      <span class="staff-chip">${escapeHtml(job.createdByName || "Staff")}</span>
+    </article>
+  `;
+}
+
+function dayBagsFromValue(data) {
+  return Object.entries(data || {})
+    .map(([id, job]) => ({ ...job, id }))
+    .sort((left, right) => Number(right.createdAt) - Number(left.createdAt));
 }
 
 function showAuthMessage(message) {
@@ -367,15 +436,121 @@ function showToday() {
   render();
   const dayRef = firebaseModules.ref(database, `days/${dateKey}/bags`);
   unsubscribeDay = firebaseModules.onValue(dayRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    jobs = Object.entries(data)
-      .map(([id, job]) => ({ ...job, id }))
-      .sort((left, right) => Number(right.createdAt) - Number(left.createdAt));
+    jobs = dayBagsFromValue(snapshot.val());
     render();
   }, (error) => {
     console.error("Could not load today's job bags:", error);
     elements.bagList.innerHTML = '<p class="catalog-error">Could not load today’s job bags. Check the Realtime Database rules and connection.</p>';
   });
+}
+
+function activatePage(page) {
+  const isSummary = page === "summary";
+  elements.jobsView.hidden = isSummary;
+  elements.summaryView.hidden = !isSummary;
+  elements.jobsTab.classList.toggle("is-active", !isSummary);
+  elements.jobsTab.setAttribute("aria-pressed", String(!isSummary));
+  elements.summaryTab.classList.toggle("is-active", isSummary);
+  elements.summaryTab.setAttribute("aria-pressed", String(isSummary));
+  if (isSummary) loadSummary();
+}
+
+function renderSelectedDay(dayKey, dayBags) {
+  const total = dayBags.reduce((sum, job) => sum + roundToNearestFive(Number(job.total) || 0), 0);
+  elements.selectedTotal.textContent = money(total);
+  elements.selectedCount.textContent = String(dayBags.length);
+  elements.selectedAverage.textContent = money(dayBags.length ? total / dayBags.length : 0);
+  elements.selectedDayDate.dateTime = dayKey;
+  elements.selectedDayDate.textContent = formatDay(dayKey);
+  elements.selectedDayList.innerHTML = dayBags.map((job) => renderBagCard(job, false)).join("");
+  elements.selectedDayEmpty.hidden = dayBags.length > 0;
+}
+
+function compactMoney(amount) {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: catalog.currency,
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(roundToNearestFive(amount));
+}
+
+function renderSalesChart(dateKeys, bagsByDate) {
+  const totals = dateKeys.map((date) => {
+    const bags = bagsByDate.get(date) || [];
+    return {
+      date,
+      bags: bags.length,
+      total: bags.reduce((sum, job) => sum + roundToNearestFive(Number(job.total) || 0), 0),
+    };
+  });
+  const maxTotal = Math.max(1, ...totals.map((entry) => entry.total));
+  elements.salesChart.style.minWidth = `${Math.max(440, totals.length * 52)}px`;
+  elements.salesChart.innerHTML = totals.map((entry) => {
+    const date = new Date(`${entry.date}T12:00:00Z`);
+    const dayLabel = summaryRange === "week"
+      ? new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" }).format(date)
+      : String(date.getUTCDate());
+    const height = entry.total ? Math.max(4, entry.total / maxTotal * 100) : 0;
+    return `
+      <button class="chart-column" type="button" data-chart-date="${entry.date}" title="${formatDay(entry.date)} · ${money(entry.total)} · ${entry.bags} bags" aria-label="${formatDay(entry.date)}: ${money(entry.total)}, ${entry.bags} bags">
+        <span class="chart-value">${compactMoney(entry.total)}</span>
+        <span class="chart-bar" style="--bar-height:${height}%"></span>
+        <span class="chart-date">${dayLabel}</span>
+      </button>
+    `;
+  }).join("");
+  elements.salesChart.querySelectorAll("[data-chart-date]").forEach((button) => {
+    button.addEventListener("click", () => {
+      elements.summaryDate.value = button.dataset.chartDate;
+      loadSummary();
+    });
+  });
+}
+
+async function loadSummary() {
+  if (!database || !currentUser || !elements.summaryDate.value) return;
+  const request = ++summaryRequest;
+  const selectedDate = elements.summaryDate.value;
+  const chartDates = summaryRange === "week"
+    ? businessWeekDates(selectedDate)
+    : calendarMonthDates(selectedDate);
+  const dateKeys = [...new Set([selectedDate, ...chartDates])];
+  elements.summaryError.hidden = true;
+  elements.selectedDayList.innerHTML = '<p class="loading-message">Loading day summary…</p>';
+  elements.selectedDayEmpty.hidden = true;
+  elements.salesChart.innerHTML = "";
+
+  try {
+    const entries = await Promise.all(dateKeys.map(async (date) => {
+      const snapshot = await firebaseModules.get(firebaseModules.ref(database, `days/${date}/bags`));
+      return [date, dayBagsFromValue(snapshot.val())];
+    }));
+    if (request !== summaryRequest) return;
+    const bagsByDate = new Map(entries);
+    renderSelectedDay(selectedDate, bagsByDate.get(selectedDate) || []);
+    renderSalesChart(chartDates, bagsByDate);
+
+    if (summaryRange === "week") {
+      const first = chartDates[0];
+      const last = chartDates[chartDates.length - 1];
+      elements.chartCaption.textContent = `${formatDay(first)} – ${formatDay(last)} · Tuesday to Saturday`;
+    } else {
+      const date = new Date(`${selectedDate}T12:00:00Z`);
+      elements.chartCaption.textContent = new Intl.DateTimeFormat(undefined, {
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      }).format(date);
+    }
+  } catch (error) {
+    if (request !== summaryRequest) return;
+    console.error("Could not load the summary:", error);
+    elements.summaryError.textContent = "Could not load summary data. Check your Realtime Database read rules and connection.";
+    elements.summaryError.hidden = false;
+    elements.selectedDayList.innerHTML = "";
+    elements.selectedDayEmpty.hidden = true;
+  }
 }
 
 function handleAuthState(user) {
@@ -385,16 +560,19 @@ function handleAuthState(user) {
   unsubscribeDay = null;
   activeDay = "";
   jobs = [];
+  canEdit = false;
+  summaryRequest += 1;
   render();
   currentUser = user;
   elements.accountBar.hidden = !user;
 
   if (!user) {
+    elements.roleBadge.textContent = "";
     elements.appShell.hidden = true;
     elements.authScreen.hidden = false;
     elements.googleSignIn.hidden = false;
     elements.authHeading.textContent = "Sign in";
-    elements.authCopy.textContent = "Sign in with your Google account to view and add today's job bags.";
+    elements.authCopy.textContent = "Sign in with your Google account to access shared job bags and summaries.";
     showAuthMessage("");
     return;
   }
@@ -410,22 +588,34 @@ function handleAuthState(user) {
 
   const memberRef = firebaseModules.ref(database, `members/${user.uid}`);
   unsubscribeMembership = firebaseModules.onValue(memberRef, (snapshot) => {
-    if (snapshot.val()?.active === true) {
+    const member = snapshot.val();
+    if (member?.active === true && ["editor", "viewer"].includes(member.role)) {
+      canEdit = member.role === "editor";
+      elements.roleBadge.textContent = canEdit ? "Editor" : "View only";
+      elements.summaryDate.value = torontoDateKey();
+      elements.jobsTab.hidden = false;
+      elements.summaryTab.hidden = false;
+      render();
       elements.authScreen.hidden = true;
       elements.appShell.hidden = false;
       showToday();
+      activatePage("jobs");
       return;
     }
     unsubscribeDay?.();
     unsubscribeDay = null;
     activeDay = "";
     jobs = [];
+    canEdit = false;
+    elements.roleBadge.textContent = "";
     render();
     elements.appShell.hidden = true;
     elements.authScreen.hidden = false;
     elements.googleSignIn.hidden = true;
-    elements.authHeading.textContent = "Access not enabled";
-    elements.authCopy.textContent = "Ask an administrator to approve this Google account.";
+    elements.authHeading.textContent = member?.active === true ? "Role not configured" : "Access not enabled";
+    elements.authCopy.textContent = member?.active === true
+      ? "Ask an administrator to set this account's role to editor or viewer."
+      : "Ask an administrator to approve this Google account.";
     showAuthMessage(`Firebase user ID: ${user.uid}`);
   }, (error) => {
     console.error("Could not check Firebase member access:", error);
@@ -433,6 +623,8 @@ function handleAuthState(user) {
     unsubscribeDay = null;
     activeDay = "";
     jobs = [];
+    canEdit = false;
+    elements.roleBadge.textContent = "";
     render();
     elements.appShell.hidden = true;
     elements.authScreen.hidden = false;
@@ -470,11 +662,36 @@ elements.goldColour.addEventListener("change", updateEstimate);
 elements.widthChoices.addEventListener("change", updateEstimate);
 elements.customItem.addEventListener("input", updateEstimate);
 elements.customPrice.addEventListener("input", updateEstimate);
+elements.otherWorkEnabled.addEventListener("change", () => {
+  elements.otherWorkFields.hidden = !elements.otherWorkEnabled.checked;
+  updateEstimate();
+});
+elements.otherWorkName.addEventListener("input", updateEstimate);
+elements.otherWorkPrice.addEventListener("input", updateEstimate);
+elements.jobsTab.addEventListener("click", () => activatePage("jobs"));
+elements.summaryTab.addEventListener("click", () => activatePage("summary"));
+elements.summaryDate.addEventListener("change", loadSummary);
+elements.weekRange.addEventListener("click", () => {
+  summaryRange = "week";
+  elements.weekRange.classList.add("is-active");
+  elements.weekRange.setAttribute("aria-pressed", "true");
+  elements.monthRange.classList.remove("is-active");
+  elements.monthRange.setAttribute("aria-pressed", "false");
+  loadSummary();
+});
+elements.monthRange.addEventListener("click", () => {
+  summaryRange = "month";
+  elements.monthRange.classList.add("is-active");
+  elements.monthRange.setAttribute("aria-pressed", "true");
+  elements.weekRange.classList.remove("is-active");
+  elements.weekRange.setAttribute("aria-pressed", "false");
+  loadSummary();
+});
 
 elements.form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!currentUser || !database || !activeDay) {
-    showError("Sign in with an approved account before adding a job bag.");
+  if (!currentUser || !database || !activeDay || !canEdit) {
+    showError("Only editors can add job bags.");
     return;
   }
   const selection = getSelection();
@@ -484,6 +701,14 @@ elements.form.addEventListener("submit", async (event) => {
   }
   if (selection.type !== "custom" && selection.tasks.length === 0) {
     showError("Choose at least one piece of bench work to price this bag.");
+    return;
+  }
+  if (elements.otherWorkEnabled.checked
+    && (!elements.otherWorkName.value.trim()
+      || !Number.isFinite(Number(elements.otherWorkPrice.value))
+      || Number(elements.otherWorkPrice.value) <= 0
+      || roundToNearestFive(Number(elements.otherWorkPrice.value)) < 5)) {
+    showError("Enter an Other job description and a price that rounds to at least $5.");
     return;
   }
   if (selection.tasks.some((task) => task.sizeFactor
@@ -538,6 +763,7 @@ elements.form.addEventListener("submit", async (event) => {
 });
 
 elements.clearButton.addEventListener("click", async () => {
+  if (!canEdit) return;
   if (!jobs.length || !window.confirm("Remove all of today's job bags?")) return;
   try {
     await firebaseModules.remove(firebaseModules.ref(database, `days/${activeDay}/bags`));

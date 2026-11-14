@@ -11,8 +11,8 @@
     "days": {
       "$date": {
         "bags": {
-          ".read": "auth != null && root.child('members').child(auth.uid).child('active').val() === true",
-          ".write": "auth != null && root.child('members').child(auth.uid).child('active').val() === true",
+          ".read": "auth != null && root.child('members').child(auth.uid).child('active').val() === true && (root.child('members').child(auth.uid).child('role').val() === 'editor' || root.child('members').child(auth.uid).child('role').val() === 'viewer')",
+          ".write": "auth != null && root.child('members').child(auth.uid).child('active').val() === true && root.child('members').child(auth.uid).child('role').val() === 'editor'",
           "$bagId": {
             ".validate": "newData.hasChildren(['id', 'reference', 'type', 'createdAt', 'createdByUid', 'createdByName', 'tasks', 'total']) && newData.child('id').val() === $bagId && newData.child('createdByUid').val() === auth.uid && newData.child('createdAt').isNumber() && newData.child('total').isNumber() && newData.child('total').val() >= 0 && newData.child('createdByName').isString() && (newData.child('type').val() === 'ring' || newData.child('type').val() === 'necklace' || newData.child('type').val() === 'custom')"
           }
