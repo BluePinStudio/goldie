@@ -968,8 +968,7 @@ function handleAuthState(user) {
 
 async function removeJob(job) {
   if (!activeDay || !database) return;
-  const label = job.reference || (job.noJobBag ? "No job bag" : "this job bag");
-  if (!window.confirm(`Mark ${label} as deleted? It will be hidden from the Journal, summaries, and Lookup, but can be restored later.`)) return;
+  if (!window.confirm("Are you sure you want to delete this job bag?")) return;
   try {
     await firebaseModules.update(
       firebaseModules.ref(database, `days/${activeDay}/bags/${job.id}`),
