@@ -63,8 +63,14 @@
               </div>
             </div>
             <form id="job-form">
-              <label class="sr-only" for="job-reference">Reference #</label>
-              <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 160893" autocomplete="off" />
+              <div class="field reference-field">
+                <label class="field-label" for="job-reference">Reference #</label>
+                <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 160893" autocomplete="off" required />
+                <label class="no-job-bag-option" for="no-job-bag">
+                  <input id="no-job-bag" name="no-job-bag" type="checkbox">
+                  <span>No job bag</span>
+                </label>
+              </div>
 
               <div class="field-row" id="piece-fields">
                 <div class="field">
@@ -156,7 +162,6 @@
                 <h2 id="bags-heading">Today's job bags <span class="heading-count" id="heading-count">0</span></h2>
                 <time class="bags-date" id="bags-date"></time>
               </div>
-              <button class="text-button" id="clear-button" type="button" hidden>Clear all</button>
             </div>
             <div class="bag-list" id="bag-list" aria-live="polite"></div>
             <div class="empty-state" id="empty-state">

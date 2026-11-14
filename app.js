@@ -46,6 +46,8 @@ const elements = {
   salesChart: document.querySelector("#sales-chart"),
   bagsDate: document.querySelector("#bags-date"),
   form: document.querySelector("#job-form"),
+  reference: document.querySelector("#job-reference"),
+  noJobBag: document.querySelector("#no-job-bag"),
   itemType: document.querySelector("#item-type"),
   material: document.querySelector("#material"),
   materialField: document.querySelector("#material-field"),
@@ -73,7 +75,6 @@ const elements = {
   headingCount: document.querySelector("#heading-count"),
   averageValue: document.querySelector("#average-value"),
   listTotal: document.querySelector("#list-total"),
-  clearButton: document.querySelector("#clear-button"),
   toast: document.querySelector("#toast"),
 };
 
@@ -430,11 +431,11 @@ function render() {
   elements.averageValue.textContent = money(count ? total / count : 0);
   elements.emptyState.hidden = count > 0;
   elements.bagsTotal.hidden = count === 0;
-  elements.clearButton.hidden = count === 0 || !canEdit;
   elements.bagList.innerHTML = jobs.map((job) => renderBagCard(job, canEdit)).join("");
   elements.bagList.querySelectorAll("[data-remove]").forEach((button) => {
     button.addEventListener("click", () => {
-      removeJob(button.dataset.remove);
+      const job = jobs.find((entry) => entry.id === button.dataset.remove);
+      if (job) removeJob(job);
     });
   });
 }
@@ -458,7 +459,7 @@ function renderBagCard(job, removable) {
     <article class="bag-card">
       <div class="bag-topline">
         <div class="bag-title-wrap">
-          <p class="bag-reference">${escapeHtml(job.reference || job.customItem || "Untitled job bag")}</p>
+          <p class="bag-reference">${escapeHtml(job.reference || (job.noJobBag ? "No job bag" : job.customItem || "Untitled job bag"))}</p>
           <p class="bag-subtitle">${escapeHtml(descriptors.filter(Boolean).join(" · "))}</p>
         </div>
         <div class="bag-price-wrap">
@@ -485,6 +486,7 @@ function formatJobMaterial(job) {
 
 function dayBagsFromValue(data) {
   return Object.entries(data || {})
+    .filter(([, job]) => job?.deleted !== true)
     .map(([id, job]) => ({ ...job, id }))
     .sort((left, right) => Number(right.createdAt) - Number(left.createdAt));
 }
@@ -584,7 +586,7 @@ async function loadLookupData() {
     const days = snapshot.val() || {};
     Object.entries(days).forEach(([date, day]) => {
       Object.entries(day?.bags || {}).forEach(([jobId, job]) => {
-        if (typeof job?.reference !== "string" || !normalizeReference(job.reference)) return;
+        if (job?.deleted === true || typeof job?.reference !== "string" || !normalizeReference(job.reference)) return;
         lookupIndex[`${date}/${jobId}`] = {
           ...job,
           jobId,
@@ -964,14 +966,19 @@ function handleAuthState(user) {
   });
 }
 
-async function removeJob(id) {
+async function removeJob(job) {
   if (!activeDay || !database) return;
+  const label = job.reference || (job.noJobBag ? "No job bag" : "this job bag");
+  if (!window.confirm(`Mark ${label} as deleted? It will be hidden from the Journal, summaries, and Lookup, but can be restored later.`)) return;
   try {
-    await firebaseModules.remove(firebaseModules.ref(database, `days/${activeDay}/bags/${id}`));
-    showToast("Job bag removed.");
+    await firebaseModules.update(
+      firebaseModules.ref(database, `days/${activeDay}/bags/${job.id}`),
+      { deleted: true },
+    );
+    showToast("Job bag marked as deleted.");
   } catch (error) {
-    console.error("Could not remove the job bag:", error);
-    showToast("Could not remove the job bag. Check database access.");
+    console.error("Could not mark the job bag as deleted:", error);
+    showToast("Could not update the job bag. Check database access.");
   }
 }
 
@@ -983,6 +990,13 @@ function showToast(message) {
 }
 
 elements.itemType.addEventListener("change", updateItemType);
+elements.reference.addEventListener("input", () => elements.reference.setCustomValidity(""));
+elements.noJobBag.addEventListener("change", () => {
+  elements.reference.setCustomValidity("");
+  elements.reference.required = !elements.noJobBag.checked;
+  elements.reference.disabled = elements.noJobBag.checked;
+  if (elements.noJobBag.checked) elements.reference.value = "";
+});
 elements.material.addEventListener("change", () => {
   elements.goldColourSection.hidden = !elements.material.value.startsWith("gold-");
   updateEstimate();
@@ -1035,6 +1049,12 @@ elements.form.addEventListener("submit", async (event) => {
     showError("Only editors can add job bags.");
     return;
   }
+  if (!elements.noJobBag.checked && !elements.reference.value.trim()) {
+    elements.reference.setCustomValidity("Enter a reference number or select No job bag.");
+    elements.reference.reportValidity();
+    return;
+  }
+  elements.reference.setCustomValidity("");
   const selection = getSelection();
   if (selection.type === "custom" && (!selection.customItem || !Number.isFinite(selection.customPrice) || selection.total < 5)) {
     showError("Enter the custom item and a price that rounds to at least $5.");
@@ -1061,10 +1081,11 @@ elements.form.addEventListener("submit", async (event) => {
     return;
   }
   showError("");
-  const reference = elements.form.elements.reference.value.trim();
+  const reference = elements.noJobBag.checked ? "" : elements.reference.value.trim();
   const firstName = currentUser.displayName?.trim().split(/\s+/)[0] || "Staff";
   const job = {
     reference,
+    noJobBag: elements.noJobBag.checked,
     type: selection.type,
     customItem: selection.customItem || "",
     materialName: selection.material?.name || "",
@@ -1095,6 +1116,9 @@ elements.form.addEventListener("submit", async (event) => {
     haptic(25);
     celebrateJobAdded();
     elements.form.reset();
+    elements.reference.setCustomValidity("");
+    elements.reference.required = true;
+    elements.reference.disabled = false;
     elements.itemType.value = "ring";
     updateItemType();
     showToast(`${reference ? `${reference} added` : "Job bag added"} to today's list.`);
@@ -1103,18 +1127,6 @@ elements.form.addEventListener("submit", async (event) => {
     showError("Could not save the job bag. Check your connection and database access.");
   } finally {
     submitButton.disabled = false;
-  }
-});
-
-elements.clearButton.addEventListener("click", async () => {
-  if (!canEdit) return;
-  if (!jobs.length || !window.confirm("Remove all of today's job bags?")) return;
-  try {
-    await firebaseModules.remove(firebaseModules.ref(database, `days/${activeDay}/bags`));
-    showToast("Today's job bags cleared.");
-  } catch (error) {
-    console.error("Could not clear today's job bags:", error);
-    showToast("Could not clear today's job bags. Check database access.");
   }
 });
 
