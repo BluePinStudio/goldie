@@ -74,6 +74,60 @@ let unsubscribeDay;
 let activeDay = "";
 let toastTimeout;
 
+function haptic(duration = 12) {
+  if ("vibrate" in navigator) navigator.vibrate(duration);
+}
+
+function celebrateJobAdded() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const canvas = document.createElement("canvas");
+  canvas.className = "confetti-canvas";
+  canvas.setAttribute("aria-hidden", "true");
+  canvas.width = window.innerWidth * window.devicePixelRatio;
+  canvas.height = window.innerHeight * window.devicePixelRatio;
+  document.body.append(canvas);
+  const context = canvas.getContext("2d");
+  if (!context) {
+    canvas.remove();
+    return;
+  }
+  context.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const colors = ["#65704e", "#c5a96e", "#d88b70", "#8997b4", "#e7c96a"];
+  const particles = Array.from({ length: 75 }, () => ({
+    x: window.innerWidth * (0.25 + Math.random() * 0.5),
+    y: window.innerHeight * 0.18,
+    vx: (Math.random() - 0.5) * 8,
+    vy: -Math.random() * 8 - 2,
+    size: Math.random() * 6 + 4,
+    rotation: Math.random() * Math.PI,
+    spin: (Math.random() - 0.5) * 0.18,
+    color: colors[Math.floor(Math.random() * colors.length)],
+  }));
+  const start = performance.now();
+  const draw = (now) => {
+    const elapsed = now - start;
+    context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    for (const particle of particles) {
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.vy += 0.18;
+      particle.rotation += particle.spin;
+      context.save();
+      context.translate(particle.x, particle.y);
+      context.rotate(particle.rotation);
+      context.fillStyle = particle.color;
+      context.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size * 0.65);
+      context.restore();
+    }
+    if (elapsed < 1500) {
+      requestAnimationFrame(draw);
+    } else {
+      canvas.remove();
+    }
+  };
+  requestAnimationFrame(draw);
+}
+
 function torontoDateKey(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Toronto",
@@ -269,6 +323,7 @@ function updateItemType() {
       : "";
   for (const input of elements.taskList.querySelectorAll(".task-input")) {
     input.addEventListener("change", () => {
+      haptic();
       const quantity = elements.form.elements[`quantity-${input.value}`];
       if (quantity) {
         quantity.disabled = !input.checked;
@@ -663,11 +718,21 @@ elements.widthChoices.addEventListener("change", updateEstimate);
 elements.customItem.addEventListener("input", updateEstimate);
 elements.customPrice.addEventListener("input", updateEstimate);
 elements.otherWorkEnabled.addEventListener("change", () => {
+  haptic();
   elements.otherWorkFields.hidden = !elements.otherWorkEnabled.checked;
   updateEstimate();
 });
 elements.otherWorkName.addEventListener("input", updateEstimate);
 elements.otherWorkPrice.addEventListener("input", updateEstimate);
+elements.taskList.addEventListener("click", (event) => {
+  if (!(event.target instanceof Element) || event.target.closest("label, input")) return;
+  const checkbox = event.target.closest(".task-option")?.querySelector(".task-input");
+  checkbox?.click();
+});
+document.querySelector(".other-work").addEventListener("click", (event) => {
+  if (!(event.target instanceof Element) || event.target.closest("label, input, #other-work-fields")) return;
+  elements.otherWorkEnabled.click();
+});
 elements.jobsTab.addEventListener("click", () => activatePage("jobs"));
 elements.summaryTab.addEventListener("click", () => activatePage("summary"));
 elements.summaryDate.addEventListener("change", loadSummary);
@@ -751,6 +816,8 @@ elements.form.addEventListener("submit", async (event) => {
     if (dateKey !== activeDay) showToday();
     const jobRef = firebaseModules.push(firebaseModules.ref(database, `days/${dateKey}/bags`));
     await firebaseModules.set(jobRef, { ...job, id: jobRef.key });
+    haptic(25);
+    celebrateJobAdded();
     elements.form.reset();
     elements.itemType.value = "ring";
     updateItemType();
