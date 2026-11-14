@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f2eb" />
     <title>Job pricing</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
     <script type="module" src="app.js"></script>
   </head>
@@ -26,7 +23,7 @@
       <section class="auth-screen" id="auth-screen" hidden>
         <div class="auth-card">
           <h1 id="auth-heading">Sign in</h1>
-          <p id="auth-copy">Sign in with your Google account to view and add today's job bags.</p>
+          <p id="auth-copy">Sign in with your Google account to access the Journal, Summary, and Lookup.</p>
           <button class="button button-primary google-button" id="google-sign-in" type="button">
             <span class="google-g" aria-hidden="true">G</span>
             <span>Continue with Google</span>
@@ -37,8 +34,9 @@
 
       <main id="app-shell" hidden>
         <nav class="view-nav" aria-label="App pages">
-          <button class="view-tab is-active" id="jobs-tab" type="button" aria-pressed="true">Jobs</button>
+          <button class="view-tab is-active" id="jobs-tab" type="button" aria-pressed="true">Journal</button>
           <button class="view-tab" id="summary-tab" type="button" aria-pressed="false">Summary</button>
+          <button class="view-tab" id="lookup-tab" type="button" aria-pressed="false">Lookup</button>
           <span class="role-badge" id="role-badge"></span>
         </nav>
         <div id="jobs-view">
@@ -253,6 +251,24 @@
             <div class="empty-state" id="selected-day-empty" hidden><h3>No job bags for this day.</h3></div>
           </section>
           <p class="summary-error" id="summary-error" role="alert" hidden></p>
+        </section>
+        <section class="lookup-view" id="lookup-view" aria-labelledby="lookup-heading" hidden>
+          <div class="summary-page-heading">
+            <h1 id="lookup-heading">Job lookup</h1>
+          </div>
+          <section class="panel lookup-panel">
+            <div class="lookup-toolbar">
+              <div class="field">
+                <label class="field-label" for="lookup-reference">Reference #</label>
+                <input class="text-input" id="lookup-reference" type="search" maxlength="60" placeholder="Search reference" autocomplete="off">
+              </div>
+            </div>
+            <p class="lookup-message" id="lookup-message" aria-live="polite">Enter a reference to search job bags.</p>
+            <div class="lookup-results" id="lookup-results"></div>
+          </section>
+          <section class="panel lookup-detail-panel" id="lookup-detail-panel" aria-live="polite" hidden>
+            <div id="lookup-detail"></div>
+          </section>
         </section>
       </main>
       <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -20,6 +20,6 @@
    }
    ```
 
-   Replace the example UID strings with the actual UIDs from Firebase Authentication → Users. Choose `editor` for job entry/deletion access or `viewer` for read-only access. Update existing member records to include a role. Only active editors can write; active editors and viewers can read. Member records and role changes are managed in the Firebase console, not by the website.
-5. Serve the folder over HTTP(S) (not by opening `index.html` directly). Job bags are shared in `days/YYYY-MM-DD/bags`, with the date based on `America/Toronto`.
-6. Editors can add and remove job bags. Both roles can open **Summary**, select a day, and view daily totals with a calendar-week chart (Sunday–Saturday) or a calendar-month chart. Weekly and monthly averages are calculated per calendar day.
+   Replace the example UID strings with the actual UIDs from Firebase Authentication → Users. Choose `editor` for job entry/deletion and **Journal** access, or `viewer` for read-only **Summary** and **Lookup** access. Update existing member records to include a role. Only active editors can write; active editors and viewers can read all logged job bags. Member records and role changes are managed in the Firebase console, not by the website.
+5. Serve the folder over HTTP(S) (not by opening `index.html` directly). Job bags are shared in `days/YYYY-MM-DD/bags`, with the date based on `America/Toronto`. Lookup fetches the `days` data when opened and searches references in the browser. The database rules allow active editors and viewers to read all job bags for this feature.
+6. Editors can add and remove job bags. Both roles can open **Summary**, select a day, and view daily totals with a calendar-week chart (Sunday–Saturday) or a calendar-month chart. Weekly and monthly averages use the number of dates with logged bags as workdays.

@@ -12,8 +12,15 @@ const elements = {
   signOut: document.querySelector("#sign-out"),
   jobsTab: document.querySelector("#jobs-tab"),
   summaryTab: document.querySelector("#summary-tab"),
+  lookupTab: document.querySelector("#lookup-tab"),
   jobsView: document.querySelector("#jobs-view"),
   summaryView: document.querySelector("#summary-view"),
+  lookupView: document.querySelector("#lookup-view"),
+  lookupReference: document.querySelector("#lookup-reference"),
+  lookupResults: document.querySelector("#lookup-results"),
+  lookupMessage: document.querySelector("#lookup-message"),
+  lookupDetailPanel: document.querySelector("#lookup-detail-panel"),
+  lookupDetail: document.querySelector("#lookup-detail"),
   roleBadge: document.querySelector("#role-badge"),
   summaryDate: document.querySelector("#summary-date"),
   selectedTotal: document.querySelector("#selected-total"),
@@ -76,6 +83,9 @@ let currentUser = null;
 let canEdit = false;
 let summaryRange = "week";
 let summaryRequest = 0;
+let lookupRequest = 0;
+let lookupIndex = {};
+let lookupLoading = false;
 let database;
 let firebaseAuth;
 let firebaseModules;
@@ -443,7 +453,7 @@ function renderBagCard(job, removable) {
   }).join("");
   const descriptors = job.type === "custom"
     ? ["Custom", job.customItem]
-    : [job.type === "chain" ? "necklace" : job.type, job.materialName, job.goldColourName, job.widthName];
+    : [job.type === "chain" ? "necklace" : job.type, formatJobMaterial(job), job.widthName];
   return `
     <article class="bag-card">
       <div class="bag-topline">
@@ -463,10 +473,184 @@ function renderBagCard(job, removable) {
   `;
 }
 
+function formatJobMaterial(job) {
+  const material = String(job.materialName || "").trim();
+  const colour = String(job.goldColourName || "").trim();
+  if (!material || !colour) return material || colour;
+  if (!/\bgold$/i.test(material)) return `${material} · ${colour}`;
+  const materialPrefix = material.replace(/\s+gold$/i, "").trim();
+  const formattedColour = colour.replace(/\bgold$/i, "Gold");
+  return `${materialPrefix} ${formattedColour}`.trim();
+}
+
 function dayBagsFromValue(data) {
   return Object.entries(data || {})
     .map(([id, job]) => ({ ...job, id }))
     .sort((left, right) => Number(right.createdAt) - Number(left.createdAt));
+}
+
+function normalizeReference(reference) {
+  return String(reference || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function editDistance(left, right) {
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let row = 1; row <= left.length; row += 1) {
+    const current = [row];
+    for (let column = 1; column <= right.length; column += 1) {
+      current[column] = Math.min(
+        current[column - 1] + 1,
+        previous[column] + 1,
+        previous[column - 1] + (left[row - 1] === right[column - 1] ? 0 : 1),
+      );
+    }
+    previous = current;
+  }
+  return previous[right.length];
+}
+
+function fuzzyReferenceDistance(query, reference) {
+  if (reference.includes(query)) return 0;
+  const maxDistance = query.length >= 5 ? 2 : 1;
+  let best = maxDistance + 1;
+  const minWindow = Math.max(1, query.length - maxDistance);
+  const maxWindow = Math.min(reference.length, query.length + maxDistance);
+  for (let size = minWindow; size <= maxWindow; size += 1) {
+    for (let start = 0; start <= reference.length - size; start += 1) {
+      best = Math.min(best, editDistance(query, reference.slice(start, start + size)));
+      if (best === 0) return 0;
+    }
+  }
+  return best;
+}
+
+function searchLookupIndex(query) {
+  if (lookupLoading) {
+    elements.lookupResults.innerHTML = "";
+    elements.lookupMessage.textContent = "Loading job bags…";
+    elements.lookupMessage.hidden = false;
+    return;
+  }
+  const normalized = normalizeReference(query);
+  if (!normalized) {
+    elements.lookupResults.innerHTML = "";
+    elements.lookupMessage.textContent = "Enter a reference to search job bags.";
+    elements.lookupMessage.hidden = false;
+    return;
+  }
+  const results = Object.values(lookupIndex).flatMap((entry) => {
+    const reference = normalizeReference(entry.reference);
+    if (!reference) return [];
+    const distance = fuzzyReferenceDistance(normalized, reference);
+    const maxDistance = normalized.length >= 5 ? 2 : 1;
+    if (distance > maxDistance) return [];
+    const score = reference === normalized ? 0
+      : reference.startsWith(normalized) ? 1
+        : reference.includes(normalized) ? 2
+          : 3 + distance;
+    return [{ ...entry, score }];
+  }).sort((left, right) => left.score - right.score || Number(right.createdAt) - Number(left.createdAt));
+  const matches = results.slice(0, 50);
+  elements.lookupResults.innerHTML = matches.map((entry) => `
+    <button class="lookup-result" type="button" data-lookup-id="${escapeHtml(entry.jobId)}" data-lookup-date="${escapeHtml(entry.date)}">
+      <span class="lookup-result-main">
+        <strong>${escapeHtml(entry.reference)}</strong>
+        <span>${escapeHtml(formatDay(entry.date))}</span>
+      </span>
+      <span class="lookup-result-meta">${entry.createdAt ? escapeHtml(new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" }).format(new Date(entry.createdAt))) : ""}</span>
+    </button>
+  `).join("");
+  elements.lookupMessage.textContent = !matches.length
+    ? "No matching references."
+    : matches.length === 50 ? "Showing the 50 closest matches." : "";
+  elements.lookupMessage.hidden = matches.length > 0 && matches.length < 50;
+  elements.lookupResults.querySelectorAll("[data-lookup-id]").forEach((button) => {
+    button.addEventListener("click", () => loadLookupJob(button.dataset.lookupDate, button.dataset.lookupId));
+  });
+}
+
+async function loadLookupData() {
+  if (!database || !currentUser) return;
+  const request = ++lookupRequest;
+  lookupLoading = true;
+  lookupIndex = {};
+  elements.lookupResults.innerHTML = "";
+  elements.lookupDetailPanel.hidden = true;
+  elements.lookupMessage.hidden = false;
+  elements.lookupMessage.textContent = "Loading job bags…";
+  try {
+    const snapshot = await firebaseModules.get(firebaseModules.ref(database, "days"));
+    if (request !== lookupRequest) return;
+    const days = snapshot.val() || {};
+    Object.entries(days).forEach(([date, day]) => {
+      Object.entries(day?.bags || {}).forEach(([jobId, job]) => {
+        if (typeof job?.reference !== "string" || !normalizeReference(job.reference)) return;
+        lookupIndex[`${date}/${jobId}`] = {
+          ...job,
+          jobId,
+          date,
+          createdAt: Number(job.createdAt) || 0,
+        };
+      });
+    });
+    lookupLoading = false;
+    searchLookupIndex(elements.lookupReference.value);
+  } catch (error) {
+    if (request !== lookupRequest) return;
+    lookupLoading = false;
+    console.error("Could not load job bags for lookup:", error);
+    elements.lookupResults.innerHTML = "";
+    elements.lookupMessage.hidden = false;
+    elements.lookupMessage.textContent = "Could not load job bags. Check the database rules and connection.";
+  }
+}
+
+function formatLoggedAt(timestamp) {
+  if (!Number.isFinite(Number(timestamp))) return "Unknown date";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "America/Toronto",
+  }).format(new Date(Number(timestamp)));
+}
+
+function loadLookupJob(date, jobId) {
+  elements.lookupDetailPanel.hidden = false;
+  const job = lookupIndex[`${date}/${jobId}`];
+  if (!job) {
+    elements.lookupDetail.innerHTML = '<p class="lookup-message">This job bag is no longer available. Search again to refresh.</p>';
+    return;
+  }
+  const tasks = Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {});
+  const piece = job.type === "custom"
+    ? `Custom · ${job.customItem || ""}`
+    : [job.type, formatJobMaterial(job), job.widthName].filter(Boolean).join(" · ");
+  elements.lookupDetail.innerHTML = `
+      <div class="lookup-detail-heading">
+        <div>
+          <p class="eyebrow">JOB BAG</p>
+          <h2>${escapeHtml(job.reference || job.customItem || "Untitled job bag")}</h2>
+          <p class="lookup-piece">${escapeHtml(piece)}</p>
+        </div>
+        <strong class="lookup-total">${money(Number(job.total) || 0)}</strong>
+      </div>
+      <dl class="lookup-metadata">
+        <div><dt>Logged</dt><dd>${escapeHtml(formatLoggedAt(job.createdAt))}</dd></div>
+        <div><dt>By</dt><dd>${escapeHtml(job.createdByName || "Unknown")}</dd></div>
+        <div><dt>Reference</dt><dd>${escapeHtml(job.reference || "—")}</dd></div>
+        ${formatJobMaterial(job) ? `<div><dt>Material</dt><dd>${escapeHtml(formatJobMaterial(job))}</dd></div>` : ""}
+        ${job.widthName ? `<div><dt>Ring width</dt><dd>${escapeHtml(job.widthName)}</dd></div>` : ""}
+        ${job.customItem ? `<div><dt>Item</dt><dd>${escapeHtml(job.customItem)}</dd></div>` : ""}
+      </dl>
+      <h3 class="lookup-section-heading">Work</h3>
+      ${tasks.length ? `<div class="lookup-tasks">${tasks.map((task) => {
+        const quantity = task.quantity > 1 || task.sizeFactor || task.characterFactor ? ` × ${task.quantity}${task.sizeFactor ? " sizes" : task.characterFactor ? " characters" : ""}` : "";
+        const amount = Number.isFinite(Number(task.chargedAmount)) ? Number(task.chargedAmount) : Number(task.price) * (Number(task.quantity) || 1);
+        return `<div class="lookup-task"><span>${escapeHtml(task.name)}${escapeHtml(quantity)}</span><strong>${money(amount)}</strong></div>`;
+      }).join("")}</div>` : '<p class="lookup-message">No repair details saved.</p>'}
+      ${job.notes ? `<div class="lookup-notes"><h3 class="lookup-section-heading">Notes</h3><p>${escapeHtml(job.notes)}</p></div>` : ""}
+    `;
+  elements.lookupDetailPanel.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function showAuthMessage(message) {
@@ -477,7 +661,7 @@ function showToday() {
   const dateKey = torontoDateKey();
   elements.bagsDate.dateTime = dateKey;
   elements.bagsDate.textContent = formatDay(dateKey);
-  if (!database || !currentUser || dateKey === activeDay) return;
+  if (!database || !currentUser || !canEdit || dateKey === activeDay) return;
 
   unsubscribeDay?.();
   activeDay = dateKey;
@@ -494,14 +678,20 @@ function showToday() {
 }
 
 function activatePage(page) {
-  const isSummary = page === "summary";
-  elements.jobsView.hidden = isSummary;
+  const isJournal = page === "jobs" && canEdit;
+  const isLookup = page === "lookup";
+  const isSummary = !isJournal && !isLookup;
+  elements.jobsView.hidden = !isJournal;
   elements.summaryView.hidden = !isSummary;
-  elements.jobsTab.classList.toggle("is-active", !isSummary);
-  elements.jobsTab.setAttribute("aria-pressed", String(!isSummary));
+  elements.lookupView.hidden = !isLookup;
+  elements.jobsTab.classList.toggle("is-active", isJournal);
+  elements.jobsTab.setAttribute("aria-pressed", String(isJournal));
   elements.summaryTab.classList.toggle("is-active", isSummary);
   elements.summaryTab.setAttribute("aria-pressed", String(isSummary));
+  elements.lookupTab.classList.toggle("is-active", isLookup);
+  elements.lookupTab.setAttribute("aria-pressed", String(isLookup));
   if (isSummary) loadSummary();
+  if (isLookup) loadLookupData();
 }
 
 function renderSelectedDay(dayKey, dayBags) {
@@ -682,6 +872,9 @@ function handleAuthState(user) {
   activeDay = "";
   jobs = [];
   canEdit = false;
+  lookupIndex = {};
+  lookupLoading = false;
+  lookupRequest += 1;
   summaryRequest += 1;
   render();
   currentUser = user;
@@ -693,7 +886,7 @@ function handleAuthState(user) {
     elements.authScreen.hidden = false;
     elements.googleSignIn.hidden = false;
     elements.authHeading.textContent = "Sign in";
-    elements.authCopy.textContent = "Sign in with your Google account to access shared job bags and summaries.";
+    elements.authCopy.textContent = "Sign in with your Google account to access the Journal, Summary, and Lookup.";
     showAuthMessage("");
     return;
   }
@@ -714,17 +907,29 @@ function handleAuthState(user) {
       canEdit = member.role === "editor";
       elements.roleBadge.textContent = canEdit ? "Editor" : "View only";
       elements.summaryDate.value = torontoDateKey();
-      elements.jobsTab.hidden = false;
+      elements.jobsTab.hidden = !canEdit;
       elements.summaryTab.hidden = false;
+      elements.lookupTab.hidden = false;
+      unsubscribeDay?.();
+      unsubscribeDay = null;
+      activeDay = "";
+      jobs = [];
       render();
       elements.authScreen.hidden = true;
       elements.appShell.hidden = false;
-      showToday();
-      activatePage("jobs");
+      if (canEdit) {
+        showToday();
+        activatePage("jobs");
+      } else {
+        activatePage("summary");
+      }
       return;
     }
     unsubscribeDay?.();
     unsubscribeDay = null;
+    lookupRequest += 1;
+    lookupIndex = {};
+    lookupLoading = false;
     activeDay = "";
     jobs = [];
     canEdit = false;
@@ -742,6 +947,9 @@ function handleAuthState(user) {
     console.error("Could not check Firebase member access:", error);
     unsubscribeDay?.();
     unsubscribeDay = null;
+    lookupRequest += 1;
+    lookupIndex = {};
+    lookupLoading = false;
     activeDay = "";
     jobs = [];
     canEdit = false;
@@ -801,6 +1009,8 @@ document.querySelector(".other-work").addEventListener("click", (event) => {
 });
 elements.jobsTab.addEventListener("click", () => activatePage("jobs"));
 elements.summaryTab.addEventListener("click", () => activatePage("summary"));
+elements.lookupTab.addEventListener("click", () => activatePage("lookup"));
+elements.lookupReference.addEventListener("input", () => searchLookupIndex(elements.lookupReference.value));
 elements.summaryDate.addEventListener("change", loadSummary);
 elements.weekRange.addEventListener("click", () => {
   summaryRange = "week";
