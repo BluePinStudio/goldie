@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f2eb" />
+    <title>Job pricing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <h1 class="brand">
+          <span>job pricing</span>
+        </h1>
+        <div class="account-bar" id="account-bar" hidden>
+          <span class="account-name" id="account-name"></span>
+          <button class="text-button" id="sign-out" type="button">Sign out</button>
+        </div>
+      </header>
+
+      <section class="auth-screen" id="auth-screen" hidden>
+        <div class="auth-card">
+          <h1 id="auth-heading">Sign in</h1>
+          <p id="auth-copy">Sign in with your Google account to view and add today's job bags.</p>
+          <button class="button button-primary google-button" id="google-sign-in" type="button">
+            <span class="google-g" aria-hidden="true">G</span>
+            <span>Continue with Google</span>
+          </button>
+          <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <main id="app-shell" hidden>
+        <section class="summary-grid" aria-label="Today's summary">
+          <article class="summary-card summary-primary">
+            <div class="summary-top"><span class="summary-label">TODAY'S TOTAL</span><span class="summary-symbol">$</span></div>
+            <p class="summary-value" id="total-value">$0.00</p>
+          </article>
+          <article class="summary-card">
+            <div class="summary-top"><span class="summary-label">JOB BAGS</span><span class="summary-symbol summary-symbol-muted">▤</span></div>
+            <p class="summary-value" id="bag-count">0</p>
+          </article>
+          <article class="summary-card">
+            <div class="summary-top"><span class="summary-label">AVERAGE / BAG</span><span class="summary-symbol summary-symbol-muted">↗</span></div>
+            <p class="summary-value" id="average-value">$0.00</p>
+          </article>
+        </section>
+
+        <div class="workspace">
+          <section class="panel entry-panel" aria-labelledby="entry-heading">
+            <div class="panel-heading">
+              <div>
+                <h2 id="entry-heading">New job</h2>
+              </div>
+            </div>
+            <form id="job-form">
+              <label class="sr-only" for="job-reference">Reference #</label>
+              <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 214 · Ellis" autocomplete="off" />
+
+              <div class="field-row" id="piece-fields">
+                <div class="field">
+                  <label class="field-label" for="item-type">Piece type</label>
+                  <div class="select-wrap">
+                    <select class="text-input" id="item-type" name="item-type"></select>
+                    <span class="select-chevron" aria-hidden="true">⌄</span>
+                  </div>
+                </div>
+                <div class="field" id="material-field">
+                  <label class="field-label" for="material">Material</label>
+                  <div class="select-wrap">
+                    <select class="text-input" id="material" name="material"></select>
+                    <span class="select-chevron" aria-hidden="true">⌄</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="conditional-section" id="gold-colour-section" hidden>
+                <label class="field-label" for="gold-colour">Gold colour</label>
+                <div class="select-wrap">
+                  <select class="text-input" id="gold-colour" name="gold-colour"></select>
+                  <span class="select-chevron" aria-hidden="true">⌄</span>
+                </div>
+              </div>
+
+              <div class="conditional-section" id="custom-section" hidden>
+                <div class="field">
+                  <label class="field-label" for="custom-item">Item</label>
+                  <input class="text-input" id="custom-item" name="custom-item" type="text" maxlength="80" placeholder="Describe the item" autocomplete="off" />
+                </div>
+                <div class="field custom-price-field">
+                  <label class="field-label" for="custom-price">Price (CAD)</label>
+                  <input class="text-input" id="custom-price" name="custom-price" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="0.00" />
+                </div>
+              </div>
+
+              <div class="conditional-section" id="ring-section" hidden>
+                <div class="section-label-row">
+                  <label class="field-label">Ring width</label>
+                  <span class="micro-copy">Choose one</span>
+                </div>
+                <div class="choice-grid width-choices" id="width-choices"></div>
+              </div>
+
+              <div class="conditional-section task-section">
+                <div class="section-label-row">
+                  <label class="field-label">Bench work</label>
+                  <span class="micro-copy" id="task-hint">Select all that apply</span>
+                </div>
+                <div id="task-list" class="task-list"></div>
+                <p class="task-footnote" id="task-footnote" hidden></p>
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="job-notes">Notes <span class="optional">OPTIONAL</span></label>
+                <textarea class="text-input notes-input" id="job-notes" name="notes" rows="2" maxlength="180" placeholder="Any details worth keeping with this bag…"></textarea>
+              </div>
+
+              <div class="form-footer">
+                <p class="estimate-line">Estimated charge <strong id="estimate-value">$0.00</strong></p>
+                <button class="button button-primary" type="submit">
+                  <span>Add to today's bags</span><span class="button-arrow" aria-hidden="true">→</span>
+                </button>
+              </div>
+              <p class="form-error" id="form-error" role="alert" hidden></p>
+            </form>
+          </section>
+
+          <section class="panel bags-panel" aria-labelledby="bags-heading">
+            <div class="panel-heading bags-heading">
+              <div>
+                <h2 id="bags-heading">Today's job bags <span class="heading-count" id="heading-count">0</span></h2>
+                <time class="bags-date" id="bags-date"></time>
+              </div>
+              <button class="text-button" id="clear-button" type="button" hidden>Clear all</button>
+            </div>
+            <div class="bag-list" id="bag-list" aria-live="polite"></div>
+            <div class="empty-state" id="empty-state">
+              <h3>No job bags yet.</h3>
+            </div>
+            <div class="bags-total" id="bags-total" hidden>
+              <span>Total</span>
+              <strong id="list-total">$0.00</strong>
+            </div>
+          </section>
+        </div>
+      </main>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </body>
+</html>

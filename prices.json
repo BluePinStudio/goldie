@@ -1,0 +1,74 @@
+{
+  "currency": "CAD",
+  "rateCardNote": "Edit the numbers in ratesCAD. Soldering excludes replacement clasps and bails. Engraving shares one setup fee and per-character rate across rings and necklaces. Per-size, per-prong, and per-bead rates are multiplied by the entered amount. Necklace additional solder and rebuild rates apply to each extra repair after the first. Custom work is priced manually on each job bag.",
+  "materials": [
+    { "id": "gold-10k", "name": "10k gold", "multiplier": 1.0 },
+    { "id": "gold-14k", "name": "14k gold", "multiplier": 1.08 },
+    { "id": "gold-18k", "name": "18k gold", "multiplier": 1.18 },
+    { "id": "silver", "name": "Silver", "multiplier": 0.9 },
+    { "id": "platinum", "name": "Platinum", "multiplier": 1.3 },
+    { "id": "other", "name": "Other", "multiplier": 1.0 }
+  ],
+  "goldColors": [
+    { "id": "yellow", "name": "Yellow gold", "multiplier": 1.0 },
+    { "id": "white", "name": "White gold", "multiplier": 1.0 },
+    { "id": "rose", "name": "Rose gold", "multiplier": 1.0 }
+  ],
+  "ringWidths": [
+    { "id": "dainty", "name": "Dainty", "range": "Up to 3 mm", "multiplier": 0.85 },
+    { "id": "regular", "name": "Regular", "range": "3–6 mm", "multiplier": 1.0 },
+    { "id": "large", "name": "Large", "range": "6 mm+", "multiplier": 1.2 }
+  ],
+  "ratesCAD": {
+    "ring": {
+      "full-shank": 425,
+      "quarter-shank": 225,
+      "resize-up-per-size": 85,
+      "resize-down-per-size": 75,
+      "quick-polish": 25,
+      "refinish": 50,
+      "refinish-rhodium": 100,
+      "retip-prongs-per-prong": 55,
+      "retip-beads-per-bead": 45,
+      "reset-stone": 80
+    },
+    "necklace": {
+      "solder-first": 65,
+      "solder-additional": 40,
+      "rebuild-first": 145,
+      "rebuild-additional": 95,
+      "chain-polish": 45,
+      "chain-refinish": 90,
+      "chain-rhodium": 110,
+      "repair-lobster-clasp": 55
+    },
+    "engraving": {
+      "setup-fee": 35,
+      "per-character": 5
+    }
+  },
+  "tasks": {
+    "ring": [
+      { "id": "full-shank", "name": "Full shank replacement", "priceKey": "full-shank" },
+      { "id": "quarter-shank", "name": "Quarter shank replacement", "priceKey": "quarter-shank" },
+      { "id": "resize-up", "name": "Resizing up", "priceKey": "resize-up-per-size", "sizeFactor": true },
+      { "id": "resize-down", "name": "Resizing down", "priceKey": "resize-down-per-size", "sizeFactor": true, "ignoreWidthMultiplier": true },
+      { "id": "quick-polish", "name": "Quick polish", "priceKey": "quick-polish" },
+      { "id": "refinish", "name": "Refinish", "priceKey": "refinish" },
+      { "id": "refinish-rhodium", "name": "Refinish & rhodium plate", "priceKey": "refinish-rhodium" },
+      { "id": "retip-prongs", "name": "Retip prongs", "priceKey": "retip-prongs-per-prong", "quantityLabel": "Prongs" },
+      { "id": "retip-beads", "name": "Retip beads", "priceKey": "retip-beads-per-bead", "quantityLabel": "Beads" },
+      { "id": "reset-stone", "name": "Re-set stone", "priceKey": "reset-stone" },
+      { "id": "laser-engrave", "name": "Laser engrave", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true, "ignoreWidthMultiplier": true }
+    ],
+    "necklace": [
+      { "id": "solder", "name": "Solder", "priceKey": "solder-first", "additionalPriceKey": "solder-additional", "quantityLabel": "Solders" },
+      { "id": "rebuild", "name": "Rebuilding", "priceKey": "rebuild-first", "additionalPriceKey": "rebuild-additional", "quantityLabel": "Rebuilds" },
+      { "id": "chain-polish", "name": "Polish", "priceKey": "chain-polish" },
+      { "id": "chain-refinish", "name": "Refinish", "priceKey": "chain-refinish" },
+      { "id": "chain-rhodium", "name": "Rhodium plate", "priceKey": "chain-rhodium" },
+      { "id": "repair-lobster-clasp", "name": "Repair lobster clasp", "priceKey": "repair-lobster-clasp" },
+      { "id": "necklace-engrave", "name": "Engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
+    ]
+  }
+}
