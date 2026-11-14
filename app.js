@@ -261,9 +261,9 @@ function updateItemType() {
     `;
   }).join("");
   updateTaskPriceLabels();
-  elements.taskFootnote.hidden = type !== "ring" && type !== "necklace";
+  elements.taskFootnote.hidden = true;
   elements.taskFootnote.textContent = type === "ring"
-    ? "For resizing, enter the change in quarter-size steps (for example 1.25). The displayed rate is per size."
+    ? ""
     : type === "necklace"
       ? "Replacement clasps and bails priced separately."
       : "";

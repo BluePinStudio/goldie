@@ -5,7 +5,7 @@
     { "id": "gold-10k", "name": "10k gold", "multiplier": 1.0 },
     { "id": "gold-14k", "name": "14k gold", "multiplier": 1.08 },
     { "id": "gold-18k", "name": "18k gold", "multiplier": 1.18 },
-    { "id": "silver", "name": "Silver", "multiplier": 0.9 },
+    { "id": "silver", "name": "Silver", "multiplier": 0.75 },
     { "id": "platinum", "name": "Platinum", "multiplier": 1.3 },
     { "id": "other", "name": "Other", "multiplier": 1.0 }
   ],
