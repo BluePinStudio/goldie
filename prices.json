@@ -49,7 +49,7 @@
   },
   "tasks": {
     "ring": [
-      { "id": "full-shank", "name": "Full shank replacement", "priceKey": "full-shank" },
+      { "id": "full-shank", "name": "Half shank replacement", "priceKey": "full-shank" },
       { "id": "quarter-shank", "name": "Quarter shank replacement", "priceKey": "quarter-shank" },
       { "id": "resize-up", "name": "Resizing up", "priceKey": "resize-up-per-size", "sizeFactor": true },
       { "id": "resize-down", "name": "Resizing down", "priceKey": "resize-down-per-size", "sizeFactor": true, "ignoreWidthMultiplier": true },
