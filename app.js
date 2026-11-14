@@ -79,53 +79,29 @@ function haptic(duration = 12) {
 }
 
 function celebrateJobAdded() {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const canvas = document.createElement("canvas");
-  canvas.className = "confetti-canvas";
-  canvas.setAttribute("aria-hidden", "true");
-  canvas.width = window.innerWidth * window.devicePixelRatio;
-  canvas.height = window.innerHeight * window.devicePixelRatio;
-  document.body.append(canvas);
-  const context = canvas.getContext("2d");
-  if (!context) {
-    canvas.remove();
-    return;
-  }
-  context.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const button = elements.form.querySelector('button[type="submit"]');
+  const buttonBounds = button.getBoundingClientRect();
+  const burst = document.createElement("div");
+  burst.className = "confetti-burst";
+  burst.setAttribute("aria-hidden", "true");
+  burst.style.left = `${buttonBounds.left + buttonBounds.width / 2}px`;
+  burst.style.top = `${buttonBounds.top + buttonBounds.height / 2}px`;
   const colors = ["#65704e", "#c5a96e", "#d88b70", "#8997b4", "#e7c96a"];
-  const particles = Array.from({ length: 75 }, () => ({
-    x: window.innerWidth * (0.25 + Math.random() * 0.5),
-    y: window.innerHeight * 0.18,
-    vx: (Math.random() - 0.5) * 8,
-    vy: -Math.random() * 8 - 2,
-    size: Math.random() * 6 + 4,
-    rotation: Math.random() * Math.PI,
-    spin: (Math.random() - 0.5) * 0.18,
-    color: colors[Math.floor(Math.random() * colors.length)],
-  }));
-  const start = performance.now();
-  const draw = (now) => {
-    const elapsed = now - start;
-    context.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    for (const particle of particles) {
-      particle.x += particle.vx;
-      particle.y += particle.vy;
-      particle.vy += 0.18;
-      particle.rotation += particle.spin;
-      context.save();
-      context.translate(particle.x, particle.y);
-      context.rotate(particle.rotation);
-      context.fillStyle = particle.color;
-      context.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size * 0.65);
-      context.restore();
-    }
-    if (elapsed < 1500) {
-      requestAnimationFrame(draw);
-    } else {
-      canvas.remove();
-    }
-  };
-  requestAnimationFrame(draw);
+  const count = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 16 : 36;
+  for (let index = 0; index < count; index += 1) {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 48 + Math.random() * 112;
+    const piece = document.createElement("span");
+    piece.className = "confetti-piece";
+    piece.style.setProperty("--confetti-x", `${Math.cos(angle) * distance}px`);
+    piece.style.setProperty("--confetti-y", `${Math.sin(angle) * distance - 28}px`);
+    piece.style.setProperty("--confetti-spin", `${Math.random() * 540 - 270}deg`);
+    piece.style.setProperty("--confetti-delay", `${Math.random() * 90}ms`);
+    piece.style.setProperty("--confetti-color", colors[Math.floor(Math.random() * colors.length)]);
+    burst.append(piece);
+  }
+  document.body.append(burst);
+  setTimeout(() => burst.remove(), 1000);
 }
 
 function torontoDateKey(date = new Date()) {

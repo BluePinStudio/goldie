@@ -171,7 +171,13 @@ h2 { font: 600 21px/1.25 var(--serif); margin-bottom: 0; letter-spacing: -.2px; 
 .empty-state h3 { margin-bottom: 0; color: #585a51; font: 600 15px var(--sans); }
 .toast { position: fixed; right: 28px; bottom: 24px; z-index: 3; padding: 11px 15px; color: #fff; background: #34372d; border-radius: 8px; box-shadow: 0 8px 25px #20241d26; font-size: 11px; opacity: 0; pointer-events: none; transform: translateY(7px); transition: opacity .2s, transform .2s; }
 .toast.show { opacity: 1; transform: translateY(0); }
-.confetti-canvas { position: fixed; inset: 0; z-index: 10; width: 100%; height: 100%; pointer-events: none; }
+.confetti-burst { position: fixed; z-index: 10; width: 1px; height: 1px; pointer-events: none; }
+.confetti-piece { position: absolute; top: 0; left: 0; width: 8px; height: 5px; background: var(--confetti-color); border-radius: 1px; animation: confetti-fly 850ms cubic-bezier(.15,.7,.35,1) var(--confetti-delay) both; }
+@keyframes confetti-fly { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--confetti-x)), calc(-50% + var(--confetti-y))) scale(.55) rotate(var(--confetti-spin)); } }
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece { animation-name: confetti-fade; animation-duration: 450ms; }
+  @keyframes confetti-fade { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } }
+}
 .loading-message, .catalog-error { padding: 28px 16px; color: #898b80; text-align: center; font-size: 11px; line-height: 1.6; }
 .catalog-error { color: #a94438; }
 
