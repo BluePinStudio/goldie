@@ -729,10 +729,11 @@ elements.form.addEventListener("submit", async (event) => {
     materialName: selection.material?.name || "",
     goldColourName: selection.color?.name || "",
     widthName: selection.width?.name || "",
-    tasks: selection.tasks.map(({ id, name, unitPrice, quantity, sizeFactor, characterFactor }) => ({
+    tasks: selection.tasks.map(({ id, name, unitPrice, taskTotal, quantity, sizeFactor, characterFactor }) => ({
       id,
       name,
       price: unitPrice,
+      chargedAmount: taskTotal,
       quantity,
       sizeFactor: Boolean(sizeFactor),
       characterFactor: Boolean(characterFactor),
