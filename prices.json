@@ -1,40 +1,72 @@
 {
   "currency": "CAD",
-  "rateCardNote": "Edit the numbers in ratesCAD. Soldering excludes replacement clasps and bails. Engraving shares one setup fee and per-character rate across rings and necklaces. Per-size, per-prong, and per-bead rates are multiplied by the entered amount. Necklace additional solder and rebuild rates apply to each extra repair after the first. Custom work is priced manually on each job bag.",
+  "rateCardNote": "Edit the explicit numbers in ratesCAD. Soldering excludes replacement clasps and bails. Necklace solder and ring sizing-up rates charge the first repair/size at the first rate and each additional one at the additional rate. Engraving shares one setup fee and per-character rate across rings and necklaces. Custom work is priced manually on each job bag.",
   "materials": [
-    { "id": "gold-10k", "name": "10k gold", "multiplier": 1.0 },
-    { "id": "gold-14k", "name": "14k gold", "multiplier": 1.08 },
-    { "id": "gold-18k", "name": "18k gold", "multiplier": 1.18 },
-    { "id": "silver", "name": "Silver", "multiplier": 0.70 },
-    { "id": "platinum", "name": "Platinum", "multiplier": 1.3 },
-    { "id": "other", "name": "Other", "multiplier": 1.0 }
+    { "id": "gold-10k", "name": "10k gold" },
+    { "id": "gold-14k", "name": "14k gold" },
+    { "id": "gold-18k", "name": "18k gold" },
+    { "id": "silver", "name": "Silver" },
+    { "id": "platinum", "name": "Platinum" },
+    { "id": "other", "name": "Other" }
   ],
   "goldColors": [
-    { "id": "yellow", "name": "Yellow gold", "multiplier": 1.0 },
-    { "id": "white", "name": "White gold", "multiplier": 1.0 },
-    { "id": "rose", "name": "Rose gold", "multiplier": 1.0 }
+    { "id": "yellow", "name": "Yellow gold" },
+    { "id": "white", "name": "White gold" },
+    { "id": "rose", "name": "Rose gold" }
   ],
   "ringWidths": [
-    { "id": "dainty", "name": "Dainty", "range": "Up to 3 mm", "multiplier": 0.85 },
-    { "id": "regular", "name": "Regular", "range": "3–6 mm", "multiplier": 1.0 },
-    { "id": "large", "name": "Large", "range": "6 mm+", "multiplier": 1.2 }
+    { "id": "under-3", "name": "Under 3 mm", "range": "Less than 3 mm" },
+    { "id": "3-to-5", "name": "3–5 mm", "range": "Between 3 mm and 5 mm" },
+    { "id": "5-to-8", "name": "5–8 mm", "range": "Between 5 mm and 8 mm" }
   ],
   "ratesCAD": {
     "ring": {
       "full-shank": 300,
       "quarter-shank": 200,
-      "resize-up-per-size": 85,
-      "resize-down-per-size": 100,
+      "resize-up": {
+        "under-3": {
+          "silver": { "first": 60, "additional": 20 },
+          "gold-10k": { "first": 115, "additional": 35 },
+          "gold-14k": { "first": 140, "additional": 45 },
+          "gold-18k": { "first": 150, "additional": 55 },
+          "platinum": { "first": 140, "additional": 50 }
+        },
+        "3-to-5": {
+          "silver": { "first": 70, "additional": 25 },
+          "gold-10k": { "first": 145, "additional": 45 },
+          "gold-14k": { "first": 170, "additional": 55 },
+          "gold-18k": { "first": 185, "additional": 65 },
+          "platinum": { "first": 170, "additional": 60 }
+        },
+        "5-to-8": {
+          "silver": { "first": 80, "additional": 35 },
+          "gold-10k": { "first": 160, "additional": 55 },
+          "gold-14k": { "first": 185, "additional": 65 },
+          "gold-18k": { "first": 210, "additional": 75 },
+          "platinum": { "first": 190, "additional": 70 }
+        }
+      },
+      "resize-down": {
+        "under-3": { "silver": 65, "gold-10k": 80, "gold-14k": 90, "gold-18k": 95, "platinum": 95 },
+        "3-to-5": { "silver": 70, "gold-10k": 95, "gold-14k": 100, "gold-18k": 105, "platinum": 105 },
+        "5-to-8": { "silver": 75, "gold-10k": 105, "gold-14k": 110, "gold-18k": 115, "platinum": 115 }
+      },
       "quick-polish": 25,
       "refinish": 50,
-      "refinish-rhodium": 100,
+      "refinish-rhodium": 85,
+      "rhodium-with-repair": 65,
       "retip-prongs-per-prong": 55,
       "retip-beads-per-bead": 45,
       "reset-stone": 80
     },
     "necklace": {
-      "solder-first": 45,
-      "solder-additional": 30,
+      "solder": {
+        "silver": { "first": 30, "additional": 15 },
+        "gold-10k": { "first": 35, "additional": 25 },
+        "gold-14k": { "first": 40, "additional": 30 },
+        "gold-18k": { "first": 45, "additional": 35 },
+        "platinum": { "first": 50, "additional": 35 }
+      },
       "rebuild-first": 50,
       "rebuild-additional": 50,
       "chain-polish": 45,
@@ -51,18 +83,19 @@
     "ring": [
       { "id": "full-shank", "name": "Half shank replacement", "priceKey": "full-shank" },
       { "id": "quarter-shank", "name": "Quarter shank replacement", "priceKey": "quarter-shank" },
-      { "id": "resize-up", "name": "Resizing up", "priceKey": "resize-up-per-size", "sizeFactor": true },
-      { "id": "resize-down", "name": "Resizing down", "priceKey": "resize-down-per-size", "sizeFactor": false, "ignoreWidthMultiplier": true },
+      { "id": "resize-up", "name": "Resizing up", "priceTable": "resize-up", "quantityLabel": "Sizes" },
+      { "id": "resize-down", "name": "Resizing down", "priceTable": "resize-down" },
       { "id": "quick-polish", "name": "Quick polish", "priceKey": "quick-polish" },
       { "id": "refinish", "name": "Refinish", "priceKey": "refinish" },
-      { "id": "refinish-rhodium", "name": "Refinish & rhodium plate", "priceKey": "refinish-rhodium" },
+      { "id": "refinish-rhodium", "name": "Refinish & rhodium plate", "priceKey": "refinish-rhodium", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"] },
+      { "id": "rhodium-with-repair", "name": "Rhodium plate (with another repair)", "priceKey": "rhodium-with-repair", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "requiresOtherTask": true },
       { "id": "retip-prongs", "name": "Retip prongs", "priceKey": "retip-prongs-per-prong", "quantityLabel": "Prongs" },
       { "id": "retip-beads", "name": "Retip beads", "priceKey": "retip-beads-per-bead", "quantityLabel": "Beads" },
       { "id": "reset-stone", "name": "Re-set stone", "priceKey": "reset-stone" },
-      { "id": "laser-engrave", "name": "Laser engrave", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true, "ignoreWidthMultiplier": true }
+      { "id": "laser-engrave", "name": "Laser engrave", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
     ],
     "necklace": [
-      { "id": "solder", "name": "Solder", "priceKey": "solder-first", "additionalPriceKey": "solder-additional", "quantityLabel": "Solders" },
+      { "id": "solder", "name": "Solder", "priceTable": "solder", "quantityLabel": "Solders" },
       { "id": "rebuild", "name": "Rebuilding", "priceKey": "rebuild-first", "additionalPriceKey": "rebuild-additional", "quantityLabel": "Rebuilds" },
       { "id": "chain-polish", "name": "Polish", "priceKey": "chain-polish" },
       { "id": "chain-refinish", "name": "Refinish", "priceKey": "chain-refinish" },

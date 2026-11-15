@@ -190,18 +190,24 @@ function money(amount) {
 function taskRates(type, task) {
   const rates = catalog.ratesCAD[task.rateGroup || type];
   const material = catalog.materials.find((entry) => entry.id === elements.material.value);
-  const color = catalog.goldColors.find((entry) => entry.id === elements.goldColour.value);
   const widthInput = elements.form.querySelector('input[name="ring-width"]:checked');
   const width = type === "ring" && widthInput
     ? catalog.ringWidths.find((entry) => entry.id === widthInput.value)
     : null;
-  const multiplier = (material?.multiplier ?? 1)
-    * (material?.id.startsWith("gold-") ? color?.multiplier ?? 1 : 1)
-    * (type === "ring" && !task.ignoreWidthMultiplier ? width?.multiplier ?? 1 : 1);
+  if (task.priceTable) {
+    const table = rates[task.priceTable];
+    const price = type === "ring"
+      ? table[width?.id]?.[material?.id]
+      : table[material?.id];
+    if (price === undefined) return null;
+    return typeof price === "number"
+      ? { unit: price, additional: null, setup: 0 }
+      : { unit: price.first, additional: price.additional ?? null, setup: 0 };
+  }
   return {
-    unit: roundToNearestFive(rates[task.priceKey] * multiplier),
-    additional: task.additionalPriceKey ? roundToNearestFive(rates[task.additionalPriceKey] * multiplier) : null,
-    setup: task.setupPriceKey ? roundToNearestFive(rates[task.setupPriceKey] * multiplier) : 0,
+    unit: rates[task.priceKey],
+    additional: task.additionalPriceKey ? rates[task.additionalPriceKey] : null,
+    setup: task.setupPriceKey ? rates[task.setupPriceKey] : 0,
   };
 }
 
@@ -224,12 +230,11 @@ function initializeCatalog(data) {
       throw new Error(`The pricing catalog needs at least one ${type} task.`);
     }
   }
-  if (!data.materials.every((material) => Number.isFinite(material.multiplier) && material.multiplier > 0)
-    || !data.goldColors.every((color) => Number.isFinite(color.multiplier) && color.multiplier > 0)) {
-    throw new Error("Every material and gold colour needs a positive numeric multiplier.");
-  }
+  const hasValidRates = (value) => Number.isFinite(value) && value >= 0
+    || Boolean(value) && typeof value === "object" && !Array.isArray(value)
+      && Object.keys(value).length > 0 && Object.values(value).every(hasValidRates);
   for (const [group, rates] of Object.entries(data.ratesCAD)) {
-    if (!Object.values(rates).every((price) => Number.isFinite(price) && price >= 0)) {
+    if (!Object.values(rates).every(hasValidRates)) {
       throw new Error(`Every ${group} rate must be a non-negative number in ratesCAD.`);
     }
   }
@@ -237,11 +242,12 @@ function initializeCatalog(data) {
     if (!tasks.every((task) => {
       const rates = data.ratesCAD[task.rateGroup || type];
       return rates
-        && Number.isFinite(rates[task.priceKey])
+        && (task.priceTable
+          ? rates[task.priceTable] && typeof rates[task.priceTable] === "object"
+          : Number.isFinite(rates[task.priceKey]))
         && (task.additionalPriceKey === undefined || Number.isFinite(rates[task.additionalPriceKey]))
         && (task.setupPriceKey === undefined || Number.isFinite(rates[task.setupPriceKey]))
-        && (task.characterFactor !== true || Boolean(task.setupPriceKey))
-        && (!task.sizeFactor || typeof task.sizeFactor === "boolean");
+        && (task.characterFactor !== true || Boolean(task.setupPriceKey));
     })) {
       throw new Error(`Every ${type} task must reference valid ratesCAD entries.`);
     }
@@ -293,15 +299,13 @@ function updateItemType() {
   elements.taskHint.textContent = type === "necklace" ? "Select repairs · extra work is discounted" : "Select all that apply";
   elements.taskList.innerHTML = catalog.tasks[type].map((task) => {
     const rates = taskRates(type, task);
-    const quantity = task.sizeFactor
-      ? `<span class="quantity-control"><input type="number" min="0.25" max="10" step="0.25" value="1" name="quantity-${escapeHtml(task.id)}" aria-label="${escapeHtml(task.name)} size change" disabled><span>sizes</span></span>`
-      : task.characterFactor
+    const quantity = task.characterFactor
         ? `<span class="quantity-control"><input type="number" min="1" max="200" step="1" value="1" name="quantity-${escapeHtml(task.id)}" aria-label="${escapeHtml(task.name)} character count" disabled><span>characters</span></span>`
       : task.quantityLabel
         ? `<span class="quantity-control"><input type="number" min="1" max="99" step="1" value="1" name="quantity-${escapeHtml(task.id)}" aria-label="${escapeHtml(task.quantityLabel)} quantity" disabled><span>${escapeHtml(task.quantityLabel.toLowerCase())}</span></span>`
       : "";
-    const priceDescription = task.sizeFactor
-      ? `${money(rates.unit)} / size`
+    const priceDescription = !rates
+      ? ""
       : task.characterFactor
         ? `${money(rates.setup)} setup + ${money(rates.unit)} / character`
       : rates.additional !== null
@@ -310,7 +314,7 @@ function updateItemType() {
           ? `${money(rates.unit)} / ${escapeHtml(task.quantityLabel.toLowerCase().replace(/s$/, ""))}`
           : money(rates.unit);
     return `
-      <div class="task-option">
+      <div class="task-option"${!rates || task.eligibleMaterials && !task.eligibleMaterials.includes(elements.material.value) ? " hidden" : ""}>
         <input class="task-input" type="checkbox" id="task-${escapeHtml(task.id)}" name="tasks" value="${escapeHtml(task.id)}">
         <label class="task-card" for="task-${escapeHtml(task.id)}">
           <span class="task-copy"><span class="task-name">${escapeHtml(task.name)}</span><span class="task-price">${priceDescription}</span></span>
@@ -329,6 +333,7 @@ function updateItemType() {
   for (const input of elements.taskList.querySelectorAll(".task-input")) {
     input.addEventListener("change", () => {
       haptic();
+      updateConditionalTaskVisibility();
       const quantity = elements.form.elements[`quantity-${input.value}`];
       if (quantity) {
         quantity.disabled = !input.checked;
@@ -339,7 +344,30 @@ function updateItemType() {
   elements.taskList.querySelectorAll(".quantity-control input").forEach((input) => {
     input.addEventListener("input", updateEstimate);
   });
+  updateConditionalTaskVisibility();
   updateEstimate();
+}
+
+function updateConditionalTaskVisibility() {
+  const type = elements.itemType.value;
+  for (const task of catalog.tasks[type]) {
+    const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(task.id)}`);
+    const option = checkbox?.closest(".task-option");
+    if (!checkbox || !option) continue;
+    const ratesAvailable = taskRates(type, task) !== null;
+    const materialEligible = ratesAvailable && (!task.eligibleMaterials || task.eligibleMaterials.includes(elements.material.value));
+    if (!materialEligible && checkbox.checked) checkbox.checked = false;
+    option.hidden = !materialEligible;
+  }
+  const hasOtherTask = [...elements.taskList.querySelectorAll(".task-input:checked")]
+    .some((input) => !["rhodium-with-repair", "refinish", "refinish-rhodium"].includes(input.value));
+  for (const task of catalog.tasks[type].filter((entry) => entry.requiresOtherTask)) {
+    const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(task.id)}`);
+    const option = checkbox?.closest(".task-option");
+    if (!checkbox || !option) continue;
+    option.hidden = option.hidden || !hasOtherTask;
+    if (option.hidden && checkbox.checked) checkbox.checked = false;
+  }
 }
 
 function updateTaskPriceLabels() {
@@ -349,9 +377,11 @@ function updateTaskPriceLabels() {
     const priceElement = elements.taskList.querySelector(`#task-${CSS.escape(task.id)} + .task-card .task-price`);
     if (!priceElement) continue;
     const rates = taskRates(type, task);
-    priceElement.textContent = task.sizeFactor
-      ? `${money(rates.unit)} / size`
-      : task.characterFactor
+    if (!rates) {
+      priceElement.textContent = "";
+      continue;
+    }
+    priceElement.textContent = task.characterFactor
         ? `${money(rates.setup)} setup + ${money(rates.unit)} / character`
       : rates.additional !== null
         ? `${money(rates.unit)} first · ${money(rates.additional)} each more`
@@ -386,7 +416,7 @@ function getSelection() {
     const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(task.id)}`);
     if (!checkbox?.checked) return [];
     const quantityInput = elements.form.elements[`quantity-${task.id}`];
-    const quantity = task.quantityLabel || task.sizeFactor || task.characterFactor ? Number(quantityInput.value) : 1;
+    const quantity = task.quantityLabel || task.characterFactor ? Number(quantityInput.value) : 1;
     const rates = taskRates(type, task);
     const taskTotal = rates.additional !== null
       ? rates.unit + Math.max(0, quantity - 1) * rates.additional
@@ -442,7 +472,7 @@ function render() {
 
 function renderBagCard(job, removable) {
   const taskChips = (Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {})).map((task) => {
-    const quantity = task.sizeFactor
+    const quantity = task.sizeFactor || task.quantityLabel === "Sizes"
       ? ` · ${task.quantity} sizes`
       : task.characterFactor
         ? ` · ${task.quantity} characters`
@@ -646,7 +676,7 @@ function loadLookupJob(date, jobId) {
       </dl>
       <h3 class="lookup-section-heading">Work</h3>
       ${tasks.length ? `<div class="lookup-tasks">${tasks.map((task) => {
-        const quantity = task.quantity > 1 || task.sizeFactor || task.characterFactor ? ` × ${task.quantity}${task.sizeFactor ? " sizes" : task.characterFactor ? " characters" : ""}` : "";
+        const quantity = task.quantity > 1 || task.sizeFactor || task.quantityLabel === "Sizes" || task.characterFactor ? ` × ${task.quantity}${task.sizeFactor || task.quantityLabel === "Sizes" ? " sizes" : task.characterFactor ? " characters" : ""}` : "";
         const amount = Number.isFinite(Number(task.chargedAmount)) ? Number(task.chargedAmount) : Number(task.price) * (Number(task.quantity) || 1);
         return `<div class="lookup-task"><span>${escapeHtml(task.name)}${escapeHtml(quantity)}</span><strong>${money(amount)}</strong></div>`;
       }).join("")}</div>` : '<p class="lookup-message">No repair details saved.</p>'}
@@ -998,6 +1028,7 @@ elements.noJobBag.addEventListener("change", () => {
 });
 elements.material.addEventListener("change", () => {
   elements.goldColourSection.hidden = !elements.material.value.startsWith("gold-");
+  updateConditionalTaskVisibility();
   updateEstimate();
 });
 elements.goldColour.addEventListener("change", updateEstimate);
@@ -1071,12 +1102,10 @@ elements.form.addEventListener("submit", async (event) => {
     showError("Enter an Other job description and a price that rounds to at least $5.");
     return;
   }
-  if (selection.tasks.some((task) => task.sizeFactor
-    ? !Number.isFinite(task.quantity) || task.quantity < 0.25 || task.quantity > 10 || Math.round(task.quantity * 4) !== task.quantity * 4
-    : task.characterFactor
+  if (selection.tasks.some((task) => task.characterFactor
       ? !Number.isInteger(task.quantity) || task.quantity < 1 || task.quantity > 200
     : task.quantityLabel && (!Number.isInteger(task.quantity) || task.quantity < 1 || task.quantity > 99))) {
-    showError("Enter sizing in quarter-size steps, engraving in 1–200 characters, and other quantities as whole numbers from 1 to 99.");
+    showError("Enter engraving in 1–200 characters and other quantities as whole numbers from 1 to 99.");
     return;
   }
   showError("");
@@ -1090,13 +1119,13 @@ elements.form.addEventListener("submit", async (event) => {
     materialName: selection.material?.name || "",
     goldColourName: selection.color?.name || "",
     widthName: selection.width?.name || "",
-    tasks: selection.tasks.map(({ id, name, unitPrice, taskTotal, quantity, sizeFactor, characterFactor }) => ({
+    tasks: selection.tasks.map(({ id, name, unitPrice, taskTotal, quantity, quantityLabel, characterFactor }) => ({
       id,
       name,
       price: unitPrice,
       chargedAmount: taskTotal,
       quantity,
-      sizeFactor: Boolean(sizeFactor),
+      ...(quantityLabel ? { quantityLabel } : {}),
       characterFactor: Boolean(characterFactor),
     })),
     notes: elements.form.elements.notes.value.trim(),
