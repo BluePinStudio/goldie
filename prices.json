@@ -142,8 +142,8 @@
       { "id": "resize-down", "name": "Resizing down", "priceTable": "resize-down" },
       { "id": "quick-polish", "name": "Quick polish", "priceKey": "quick-polish" },
       { "id": "refinish", "name": "Refinish", "priceKey": "refinish" },
-      { "id": "refinish-rhodium", "name": "Refinish & rhodium plate", "priceKey": "refinish-rhodium", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"] },
-      { "id": "rhodium-with-repair", "name": "Rhodium plate (with another repair)", "priceKey": "rhodium-with-repair", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "requiresOtherTask": true },
+      { "id": "refinish-rhodium", "name": "Refinish & rhodium plate", "priceKey": "refinish-rhodium", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "excludedGoldColors": ["yellow"] },
+      { "id": "rhodium-with-repair", "name": "Rhodium plate (with another repair)", "priceKey": "rhodium-with-repair", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "excludedGoldColors": ["yellow"], "requiresOtherTask": true },
       { "id": "retip-prongs", "name": "Retip prongs", "priceKey": "retip-prongs-per-prong", "quantityLabel": "Prongs" },
       { "id": "retip-beads", "name": "Retip beads", "priceKey": "retip-beads-per-bead", "quantityLabel": "Beads" },
       { "id": "reset-stone", "name": "Re-set stone", "priceKey": "reset-stone" },
@@ -154,7 +154,7 @@
       { "id": "rebuild", "name": "Rebuilding", "priceKey": "rebuild-first", "additionalPriceKey": "rebuild-additional", "quantityLabel": "Rebuilds" },
       { "id": "chain-polish", "name": "Polish", "priceKey": "chain-polish" },
       { "id": "chain-refinish", "name": "Refinish", "priceKey": "chain-refinish" },
-      { "id": "chain-rhodium", "name": "Rhodium plate", "priceKey": "chain-rhodium" },
+      { "id": "chain-rhodium", "name": "Rhodium plate", "priceKey": "chain-rhodium", "excludedGoldColors": ["yellow"] },
       { "id": "repair-lobster-clasp", "name": "Repair lobster clasp", "priceKey": "repair-lobster-clasp" },
       { "id": "necklace-engrave", "name": "Engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
     ]

@@ -352,12 +352,15 @@ function updateItemType() {
 
 function updateConditionalTaskVisibility() {
   const type = elements.itemType.value;
+  const material = catalog.materials.find((entry) => entry.id === elements.material.value);
   for (const task of catalog.tasks[type]) {
     const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(task.id)}`);
     const option = checkbox?.closest(".task-option");
     if (!checkbox || !option) continue;
     const ratesAvailable = taskRates(type, task) !== null;
-    const materialEligible = ratesAvailable && (!task.eligibleMaterials || task.eligibleMaterials.includes(elements.material.value));
+    const materialEligible = ratesAvailable
+      && (!task.eligibleMaterials || task.eligibleMaterials.includes(elements.material.value))
+      && (!material?.id.startsWith("gold-") || !task.excludedGoldColors || !task.excludedGoldColors.includes(elements.goldColour.value));
     if (!materialEligible && checkbox.checked) {
       checkbox.checked = false;
       const quantity = elements.form.elements[`quantity-${task.id}`];
@@ -1075,7 +1078,10 @@ elements.material.addEventListener("change", () => {
   updateConditionalTaskVisibility();
   updateEstimate();
 });
-elements.goldColour.addEventListener("change", updateEstimate);
+elements.goldColour.addEventListener("change", () => {
+  updateConditionalTaskVisibility();
+  updateEstimate();
+});
 elements.widthChoices.addEventListener("change", updateEstimate);
 elements.customItem.addEventListener("input", updateEstimate);
 elements.customPrice.addEventListener("input", updateEstimate);
