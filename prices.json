@@ -1,6 +1,6 @@
 {
   "currency": "CAD",
-  "rateCardNote": "Edit the explicit numbers in ratesCAD. Soldering excludes replacement clasps and bails. Necklace solder and ring sizing-up rates charge the first repair/size at the first rate and each additional one at the additional rate. Engraving shares one setup fee and per-character rate across rings and necklaces. Custom work is priced manually on each job bag.",
+  "rateCardNote": "Edit the explicit numbers in ratesCAD. Half- and quarter-shank rates are listed by width and material; shanks wider than 2 mm charge the first size at the first rate and each additional size at the additional rate. Necklace solder and ring sizing-up follow the same first/additional pricing. Engraving shares one setup fee and per-character rate across rings and necklaces. Custom work is priced manually on each job bag.",
   "materials": [
     { "id": "gold-10k", "name": "10k gold" },
     { "id": "gold-14k", "name": "14k gold" },
@@ -15,30 +15,84 @@
     { "id": "rose", "name": "Rose gold" }
   ],
   "ringWidths": [
-    { "id": "under-3", "name": "Under 3 mm", "range": "Less than 3 mm" },
-    { "id": "3-to-5", "name": "3–5 mm", "range": "Between 3 mm and 5 mm" },
-    { "id": "5-to-8", "name": "5–8 mm", "range": "Between 5 mm and 8 mm" }
+    { "id": "2mm", "name": "2 mm" },
+    { "id": "3mm", "name": "3 mm" },
+    { "id": "5mm", "name": "5 mm" },
+    { "id": "8mm", "name": "8 mm" }
   ],
   "ratesCAD": {
     "ring": {
-      "full-shank": 300,
-      "quarter-shank": 200,
+      "full-shank": {
+        "2mm": { "silver": 125, "gold-10k": 260, "gold-14k": 295, "gold-18k": 390, "platinum": 380 },
+        "3mm": {
+          "silver": { "first": 140, "additional": 15 },
+          "gold-10k": { "first": 290, "additional": 35 },
+          "gold-14k": { "first": 325, "additional": 45 },
+          "gold-18k": { "first": 440, "additional": 55 },
+          "platinum": { "first": 430, "additional": 50 }
+        },
+        "5mm": {
+          "silver": { "first": 150, "additional": 20 },
+          "gold-10k": { "first": 490, "additional": 45 },
+          "gold-14k": { "first": 575, "additional": 55 },
+          "gold-18k": { "first": 785, "additional": 65 },
+          "platinum": { "first": 775, "additional": 60 }
+        },
+        "8mm": {
+          "silver": { "first": 160, "additional": 25 },
+          "gold-10k": { "first": 700, "additional": 55 },
+          "gold-14k": { "first": 745, "additional": 65 },
+          "gold-18k": { "first": 1190, "additional": 75 },
+          "platinum": { "first": 1180, "additional": 70 }
+        }
+      },
+      "quarter-shank": {
+        "2mm": { "silver": 62.5, "gold-10k": 130, "gold-14k": 147.5, "gold-18k": 195, "platinum": 190 },
+        "3mm": {
+          "silver": { "first": 70, "additional": 7.5 },
+          "gold-10k": { "first": 145, "additional": 17.5 },
+          "gold-14k": { "first": 162.5, "additional": 22.5 },
+          "gold-18k": { "first": 220, "additional": 27.5 },
+          "platinum": { "first": 215, "additional": 25 }
+        },
+        "5mm": {
+          "silver": { "first": 75, "additional": 10 },
+          "gold-10k": { "first": 245, "additional": 22.5 },
+          "gold-14k": { "first": 287.5, "additional": 27.5 },
+          "gold-18k": { "first": 392.5, "additional": 32.5 },
+          "platinum": { "first": 387.5, "additional": 30 }
+        },
+        "8mm": {
+          "silver": { "first": 80, "additional": 12.5 },
+          "gold-10k": { "first": 350, "additional": 27.5 },
+          "gold-14k": { "first": 372.5, "additional": 32.5 },
+          "gold-18k": { "first": 595, "additional": 37.5 },
+          "platinum": { "first": 590, "additional": 35 }
+        }
+      },
       "resize-up": {
-        "under-3": {
+        "2mm": {
           "silver": { "first": 60, "additional": 20 },
           "gold-10k": { "first": 115, "additional": 35 },
           "gold-14k": { "first": 140, "additional": 45 },
           "gold-18k": { "first": 150, "additional": 55 },
           "platinum": { "first": 140, "additional": 50 }
         },
-        "3-to-5": {
+        "3mm": {
           "silver": { "first": 70, "additional": 25 },
           "gold-10k": { "first": 145, "additional": 45 },
           "gold-14k": { "first": 170, "additional": 55 },
           "gold-18k": { "first": 185, "additional": 65 },
           "platinum": { "first": 170, "additional": 60 }
         },
-        "5-to-8": {
+        "5mm": {
+          "silver": { "first": 70, "additional": 25 },
+          "gold-10k": { "first": 145, "additional": 45 },
+          "gold-14k": { "first": 170, "additional": 55 },
+          "gold-18k": { "first": 185, "additional": 65 },
+          "platinum": { "first": 170, "additional": 60 }
+        },
+        "8mm": {
           "silver": { "first": 80, "additional": 35 },
           "gold-10k": { "first": 160, "additional": 55 },
           "gold-14k": { "first": 185, "additional": 65 },
@@ -47,9 +101,10 @@
         }
       },
       "resize-down": {
-        "under-3": { "silver": 65, "gold-10k": 80, "gold-14k": 90, "gold-18k": 95, "platinum": 95 },
-        "3-to-5": { "silver": 70, "gold-10k": 95, "gold-14k": 100, "gold-18k": 105, "platinum": 105 },
-        "5-to-8": { "silver": 75, "gold-10k": 105, "gold-14k": 110, "gold-18k": 115, "platinum": 115 }
+        "2mm": { "silver": 65, "gold-10k": 80, "gold-14k": 90, "gold-18k": 95, "platinum": 95 },
+        "3mm": { "silver": 70, "gold-10k": 95, "gold-14k": 100, "gold-18k": 105, "platinum": 105 },
+        "5mm": { "silver": 70, "gold-10k": 95, "gold-14k": 100, "gold-18k": 105, "platinum": 105 },
+        "8mm": { "silver": 75, "gold-10k": 105, "gold-14k": 110, "gold-18k": 115, "platinum": 115 }
       },
       "quick-polish": 25,
       "refinish": 50,
@@ -81,8 +136,8 @@
   },
   "tasks": {
     "ring": [
-      { "id": "full-shank", "name": "Half shank replacement", "priceKey": "full-shank" },
-      { "id": "quarter-shank", "name": "Quarter shank replacement", "priceKey": "quarter-shank" },
+      { "id": "full-shank", "name": "Half shank replacement", "priceTable": "full-shank", "quantityLabel": "Sizes" },
+      { "id": "quarter-shank", "name": "Quarter shank replacement", "priceTable": "quarter-shank", "quantityLabel": "Sizes" },
       { "id": "resize-up", "name": "Resizing up", "priceTable": "resize-up", "quantityLabel": "Sizes" },
       { "id": "resize-down", "name": "Resizing down", "priceTable": "resize-down" },
       { "id": "quick-polish", "name": "Quick polish", "priceKey": "quick-polish" },

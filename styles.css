@@ -116,7 +116,7 @@ h2 { font: 600 21px/1.25 var(--serif); margin-bottom: 0; letter-spacing: -.2px; 
 .section-label-row { display: flex; align-items: center; justify-content: space-between; }
 .section-label-row .field-label { margin-bottom: 9px; }
 .micro-copy { margin-bottom: 9px; color: #a0a195; font-size: 9px; }
-.choice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.choice-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
 .choice-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .choice-card { display: flex; flex-direction: column; gap: 4px; padding: 9px 10px; cursor: pointer; border: 1px solid #e8e6de; border-radius: 7px; transition: border-color .16s, background .16s; }
 .choice-card:hover, .task-card:hover { border-color: #c9cbbd; }

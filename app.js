@@ -182,9 +182,9 @@ function money(amount) {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: catalog.currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(roundToNearestFive(amount));
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function taskRates(type, task) {
@@ -273,7 +273,7 @@ function renderOptions() {
     <div>
       <input class="choice-input" type="radio" name="ring-width" id="width-${escapeHtml(width.id)}" value="${escapeHtml(width.id)}" ${index === 1 ? "checked" : ""}>
       <label class="choice-card" for="width-${escapeHtml(width.id)}">
-        <strong>${escapeHtml(width.name)}</strong><span>${escapeHtml(width.range)}</span>
+        <strong>${escapeHtml(width.name)}</strong>
       </label>
     </div>
   `).join("");
@@ -308,6 +308,8 @@ function updateItemType() {
       ? ""
       : task.characterFactor
         ? `${money(rates.setup)} setup + ${money(rates.unit)} / character`
+      : task.priceTable && rates.additional === null
+        ? money(rates.unit)
       : rates.additional !== null
         ? `${money(rates.unit)} first · ${money(rates.additional)} each more`
         : task.quantityLabel
@@ -356,8 +358,37 @@ function updateConditionalTaskVisibility() {
     if (!checkbox || !option) continue;
     const ratesAvailable = taskRates(type, task) !== null;
     const materialEligible = ratesAvailable && (!task.eligibleMaterials || task.eligibleMaterials.includes(elements.material.value));
-    if (!materialEligible && checkbox.checked) checkbox.checked = false;
+    if (!materialEligible && checkbox.checked) {
+      checkbox.checked = false;
+      const quantity = elements.form.elements[`quantity-${task.id}`];
+      if (quantity) quantity.disabled = true;
+    }
     option.hidden = !materialEligible;
+  }
+  if (type === "ring") {
+    const selected = new Set([...elements.taskList.querySelectorAll(".task-input:checked")].map((input) => input.value));
+    const resizingSelected = selected.has("resize-up") || selected.has("resize-down");
+    const shankSelected = selected.has("full-shank") || selected.has("quarter-shank");
+    const hiddenTasks = new Set();
+    if (resizingSelected) {
+      hiddenTasks.add(selected.has("resize-up") ? "resize-down" : "resize-up");
+      for (const id of ["full-shank", "quarter-shank", "refinish", "refinish-rhodium"]) hiddenTasks.add(id);
+    } else if (shankSelected) {
+      for (const id of ["resize-up", "resize-down", "refinish", "refinish-rhodium"]) hiddenTasks.add(id);
+      if (selected.has("full-shank")) hiddenTasks.add("quarter-shank");
+      if (selected.has("quarter-shank")) hiddenTasks.add("full-shank");
+    }
+    for (const id of hiddenTasks) {
+      const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(id)}`);
+      const option = checkbox?.closest(".task-option");
+      if (!checkbox || !option) continue;
+      option.hidden = true;
+      if (checkbox.checked) {
+        checkbox.checked = false;
+        const quantity = elements.form.elements[`quantity-${id}`];
+        if (quantity) quantity.disabled = true;
+      }
+    }
   }
   const hasOtherTask = [...elements.taskList.querySelectorAll(".task-input:checked")]
     .some((input) => !["rhodium-with-repair", "refinish", "refinish-rhodium"].includes(input.value));
@@ -377,12 +408,18 @@ function updateTaskPriceLabels() {
     const priceElement = elements.taskList.querySelector(`#task-${CSS.escape(task.id)} + .task-card .task-price`);
     if (!priceElement) continue;
     const rates = taskRates(type, task);
+    const quantityControl = priceElement.closest(".task-option").querySelector(".quantity-control");
+    if (quantityControl && task.priceTable && task.quantityLabel === "Sizes") {
+      quantityControl.hidden = !rates || rates.additional === null;
+    }
     if (!rates) {
       priceElement.textContent = "";
       continue;
     }
     priceElement.textContent = task.characterFactor
         ? `${money(rates.setup)} setup + ${money(rates.unit)} / character`
+      : task.priceTable && rates.additional === null
+        ? money(rates.unit)
       : rates.additional !== null
         ? `${money(rates.unit)} first · ${money(rates.additional)} each more`
         : task.quantityLabel
@@ -416,12 +453,19 @@ function getSelection() {
     const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(task.id)}`);
     if (!checkbox?.checked) return [];
     const quantityInput = elements.form.elements[`quantity-${task.id}`];
-    const quantity = task.quantityLabel || task.characterFactor ? Number(quantityInput.value) : 1;
+    const hasQuantityInput = quantityInput && !quantityInput.closest(".quantity-control").hidden;
+    const quantity = hasQuantityInput ? Number(quantityInput.value) : 1;
     const rates = taskRates(type, task);
     const taskTotal = rates.additional !== null
       ? rates.unit + Math.max(0, quantity - 1) * rates.additional
       : rates.setup + rates.unit * quantity;
-    return [{ ...task, quantity, unitPrice: rates.unit, taskTotal }];
+    return [{
+      ...task,
+      quantity,
+      quantityLabel: hasQuantityInput ? task.quantityLabel : undefined,
+      unitPrice: rates.unit,
+      taskTotal,
+    }];
   });
   if (elements.otherWorkEnabled.checked) {
     const price = roundToNearestFive(Number(elements.otherWorkPrice.value));
@@ -433,7 +477,7 @@ function getSelection() {
       taskTotal: price,
     });
   }
-  const total = roundToNearestFive(tasks.reduce((sum, task) => sum + task.taskTotal, 0));
+  const total = tasks.reduce((sum, task) => sum + task.taskTotal, 0);
   return { type, material, color, width, tasks, total };
 }
 
@@ -451,7 +495,7 @@ function showError(message) {
 function render() {
   if (!catalog) return;
   document.querySelector(".entry-panel").hidden = !canEdit;
-  const total = jobs.reduce((sum, job) => sum + roundToNearestFive(job.total), 0);
+  const total = jobs.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
   const count = jobs.length;
   const formattedTotal = money(total);
   elements.totalValue.textContent = formattedTotal;
@@ -727,7 +771,7 @@ function activatePage(page) {
 }
 
 function renderSelectedDay(dayKey, dayBags) {
-  const total = dayBags.reduce((sum, job) => sum + roundToNearestFive(Number(job.total) || 0), 0);
+  const total = dayBags.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
   elements.selectedTotal.textContent = money(total);
   elements.selectedCount.textContent = String(dayBags.length);
   elements.selectedAverage.textContent = money(dayBags.length ? total / dayBags.length : 0);
@@ -743,7 +787,7 @@ function compactMoney(amount) {
     currency: catalog.currency,
     notation: "compact",
     maximumFractionDigits: 1,
-  }).format(roundToNearestFive(amount));
+  }).format(amount);
 }
 
 function renderSalesChart(dateKeys, bagsByDate) {
@@ -752,7 +796,7 @@ function renderSalesChart(dateKeys, bagsByDate) {
     return {
       date,
       bags: bags.length,
-      total: bags.reduce((sum, job) => sum + roundToNearestFive(Number(job.total) || 0), 0),
+      total: bags.reduce((sum, job) => sum + (Number(job.total) || 0), 0),
     };
   });
   const maxTotal = Math.max(1, ...totals.map((entry) => entry.total));
@@ -795,7 +839,7 @@ function reportPeriodDates(periodDates, today) {
 function periodMetrics(dateKeys, bagsByDate) {
   const total = dateKeys.reduce((sum, date) => {
     const bags = bagsByDate.get(date) || [];
-    return sum + bags.reduce((bagSum, job) => bagSum + roundToNearestFive(Number(job.total) || 0), 0);
+    return sum + bags.reduce((bagSum, job) => bagSum + (Number(job.total) || 0), 0);
   }, 0);
   const loggedDays = dateKeys.filter((date) => (bagsByDate.get(date) || []).length > 0).length;
   return {
@@ -1129,7 +1173,7 @@ elements.form.addEventListener("submit", async (event) => {
       characterFactor: Boolean(characterFactor),
     })),
     notes: elements.form.elements.notes.value.trim(),
-    total: roundToNearestFive(selection.total),
+    total: selection.total,
     createdAt: Date.now(),
     createdByUid: currentUser.uid,
     createdByName: firstName,
