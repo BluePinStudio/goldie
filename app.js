@@ -163,6 +163,114 @@ function calendarMonthDates(dateKey) {
   return Array.from({ length: dayCount }, (_, index) => `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`);
 }
 
+function calendarGridDates(monthDates) {
+  const firstDate = new Date(`${monthDates[0]}T12:00:00Z`);
+  const lastDate = new Date(`${monthDates[monthDates.length - 1]}T12:00:00Z`);
+  const gridStart = new Date(Date.UTC(
+    firstDate.getUTCFullYear(),
+    firstDate.getUTCMonth(),
+    firstDate.getUTCDate() - firstDate.getUTCDay(),
+  ));
+  const gridEnd = new Date(Date.UTC(
+    lastDate.getUTCFullYear(),
+    lastDate.getUTCMonth(),
+    lastDate.getUTCDate() + 6 - lastDate.getUTCDay(),
+  ));
+  const dates = [];
+  for (const date = new Date(gridStart); date <= gridEnd; date.setUTCDate(date.getUTCDate() + 1)) {
+    dates.push(date.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+function fullMoonJulianDate(lunation) {
+  // Meeus's phase approximation uses a half-step from each new-moon lunation.
+  const k = lunation + 0.5;
+  const t = k / 1236.85;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const t4 = t3 * t;
+  const sinDegrees = (angle) => Math.sin(angle * Math.PI / 180);
+  const solarAnomaly = 2.5534 + 29.10535670 * k - 0.0000014 * t2 - 0.00000011 * t3;
+  const lunarAnomaly = 201.5643 + 385.81693528 * k + 0.0107582 * t2 + 0.00001238 * t3 - 0.000000058 * t4;
+  const latitudeArgument = 160.7108 + 390.67050284 * k - 0.0016118 * t2 - 0.00000227 * t3 + 0.000000011 * t4;
+  const jde = 2451550.09766 + 29.530588861 * k + 0.00015437 * t2 - 0.000000150 * t3 + 0.00000000073 * t4;
+  const phaseCorrection =
+    (0.1734 - 0.000393 * t) * sinDegrees(solarAnomaly)
+    + 0.0021 * sinDegrees(2 * solarAnomaly)
+    - 0.4068 * sinDegrees(lunarAnomaly)
+    + 0.0161 * sinDegrees(2 * lunarAnomaly)
+    - 0.0004 * sinDegrees(3 * lunarAnomaly)
+    + 0.0104 * sinDegrees(2 * latitudeArgument)
+    - 0.0051 * sinDegrees(solarAnomaly + lunarAnomaly)
+    - 0.0074 * sinDegrees(solarAnomaly - lunarAnomaly)
+    + 0.0004 * sinDegrees(2 * latitudeArgument + solarAnomaly)
+    - 0.0004 * sinDegrees(2 * latitudeArgument - solarAnomaly)
+    - 0.0006 * sinDegrees(2 * latitudeArgument + lunarAnomaly)
+    + 0.0010 * sinDegrees(2 * latitudeArgument - lunarAnomaly)
+    + 0.0005 * sinDegrees(solarAnomaly + 2 * lunarAnomaly);
+  const planetaryCorrection =
+    0.000325 * sinDegrees(299.77 + 0.107408 * k - 0.009173 * t2)
+    + 0.000165 * sinDegrees(251.88 + 0.016321 * k)
+    + 0.000164 * sinDegrees(251.83 + 26.651886 * k)
+    + 0.000126 * sinDegrees(349.42 + 36.412478 * k)
+    + 0.000110 * sinDegrees(84.66 + 18.206239 * k)
+    + 0.000062 * sinDegrees(141.74 + 53.303771 * k)
+    + 0.000060 * sinDegrees(207.14 + 2.453732 * k)
+    + 0.000056 * sinDegrees(154.84 + 7.306860 * k)
+    + 0.000047 * sinDegrees(34.52 + 27.261239 * k)
+    + 0.000042 * sinDegrees(207.19 + 0.121824 * k)
+    + 0.000040 * sinDegrees(291.34 + 1.844379 * k)
+    + 0.000037 * sinDegrees(161.72 + 24.198154 * k)
+    + 0.000035 * sinDegrees(239.56 + 25.513099 * k)
+    + 0.000023 * sinDegrees(331.55 + 3.592518 * k);
+  return jde + phaseCorrection + planetaryCorrection;
+}
+
+function terrestrialTimeOffsetSeconds(year) {
+  if (year >= 2150) {
+    const centuriesSince1820 = (year - 1820) / 100;
+    return -20 + 32 * centuriesSince1820 ** 2;
+  }
+  if (year >= 2050) {
+    const centuriesSince1820 = (year - 1820) / 100;
+    return -20 + 32 * centuriesSince1820 ** 2 - 0.5628 * (2150 - year);
+  }
+  if (year >= 2005 && year < 2050) {
+    const yearsSince2000 = year - 2000;
+    return 62.92 + 0.32217 * yearsSince2000 + 0.005589 * yearsSince2000 ** 2;
+  }
+  if (year >= 1986) {
+    const yearsSince2000 = year - 2000;
+    return 63.86
+      + 0.3345 * yearsSince2000
+      - 0.060374 * yearsSince2000 ** 2
+      + 0.0017275 * yearsSince2000 ** 3
+      + 0.000651814 * yearsSince2000 ** 4
+      + 0.00002373599 * yearsSince2000 ** 5;
+  }
+  return 69;
+}
+
+function fullMoonDatesForGrid(calendarDates) {
+  const firstDay = Date.parse(`${calendarDates[0]}T00:00:00Z`) - 86_400_000;
+  const lastDay = Date.parse(`${calendarDates[calendarDates.length - 1]}T23:59:59Z`) + 86_400_000;
+  const startJulianDate = 2440587.5 + firstDay / 86_400_000;
+  const endJulianDate = 2440587.5 + lastDay / 86_400_000;
+  const firstLunation = Math.floor((startJulianDate - 2451550.09766) / 29.530588861) - 1;
+  const lastLunation = Math.ceil((endJulianDate - 2451550.09766) / 29.530588861) + 1;
+  const visibleDates = new Set(calendarDates);
+  const fullMoonDates = new Set();
+  for (let lunation = firstLunation; lunation <= lastLunation; lunation += 1) {
+    const julianDate = fullMoonJulianDate(lunation);
+    const terrestrialTimestamp = (julianDate - 2440587.5) * 86_400_000;
+    const year = new Date(terrestrialTimestamp).getUTCFullYear();
+    const fullMoonDate = torontoDateKey(new Date(terrestrialTimestamp - terrestrialTimeOffsetSeconds(year) * 1000));
+    if (visibleDates.has(fullMoonDate)) fullMoonDates.add(fullMoonDate);
+  }
+  return fullMoonDates;
+}
+
 function shiftMonthDateKey(dateKey, offset) {
   const [year, month, day] = dateKey.split("-").map(Number);
   const targetMonth = new Date(Date.UTC(year, month - 1 + offset, 1));
@@ -1017,7 +1125,6 @@ function totalForDates(dateKeys, bagsByDate) {
 }
 
 function renderCalendar(monthDates, selectedDate, bagsByDate) {
-  const firstDay = new Date(`${monthDates[0]}T12:00:00Z`).getUTCDay();
   const monthDate = new Date(`${selectedDate}T12:00:00Z`);
   const today = torontoDateKey();
   elements.calendarMonthLabel.textContent = new Intl.DateTimeFormat(undefined, {
@@ -1026,29 +1133,27 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
     timeZone: "UTC",
   }).format(monthDate);
   elements.calendarMonthTotal.textContent = money(totalForDates(monthDates, bagsByDate));
-  const calendarDays = [
-    ...Array.from({ length: firstDay }, () => null),
-    ...monthDates,
-  ];
-  while (calendarDays.length % 7) calendarDays.push(null);
+  const calendarDays = calendarGridDates(monthDates);
+  const fullMoonDates = fullMoonDatesForGrid(calendarDays);
   const weekMarkup = [];
   for (let index = 0; index < calendarDays.length; index += 7) {
     const week = calendarDays.slice(index, index + 7);
-    const weekDates = week.filter(Boolean);
+    const weekDates = week;
     const dayMarkup = week.map((dateKey) => {
-      if (!dateKey) return '<span class="calendar-day-spacer" aria-hidden="true"></span>';
       const bags = bagsByDate.get(dateKey) || [];
       const total = bags.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
       const date = new Date(`${dateKey}T12:00:00Z`);
+      const hasFullMoon = fullMoonDates.has(dateKey);
       const bagLabel = bags.length === 1 ? "1 job bag" : `${bags.length} job bags`;
       const classes = [
         "calendar-day",
+        dateKey.slice(0, 7) !== monthDates[0].slice(0, 7) ? "is-outside-month" : "",
         dateKey === selectedDate ? "is-selected" : "",
         dateKey === today ? "is-today" : "",
       ].filter(Boolean).join(" ");
       return `
-        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}: ${money(total)}, ${bagLabel}" title="${money(total)}">
-          <span class="calendar-day-number">${date.getUTCDate()}</span>
+        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}${hasFullMoon ? ", Full moon" : ""}: ${money(total)}, ${bagLabel}" title="${hasFullMoon ? "Full moon · " : ""}${money(total)}">
+          <span class="calendar-day-number">${date.getUTCDate()}${hasFullMoon ? '<span class="full-moon-indicator" aria-hidden="true">🌕</span>' : ""}</span>
           <span class="calendar-day-total">${money(total)}</span>
         </button>
       `;
@@ -1071,6 +1176,11 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
       void recordUserActivity({ calendarDate: dateKey });
       elements.summaryDate.value = dateKey;
       summaryHasDaySelection = true;
+      if (!monthDates.includes(dateKey)) {
+        elements.selectedDayPanel.hidden = true;
+        void loadSummary();
+        return;
+      }
       renderCalendar(monthDates, dateKey, bagsByDate);
       renderSelectedDay(dateKey, bagsByDate.get(dateKey) || []);
     });
@@ -1082,12 +1192,13 @@ async function loadSummary() {
   const request = ++summaryRequest;
   const selectedDate = elements.summaryDate.value;
   const monthDates = calendarMonthDates(selectedDate);
+  const calendarDates = calendarGridDates(monthDates);
   elements.summaryError.hidden = true;
   elements.calendarGrid.innerHTML = '<p class="loading-message">Loading calendar…</p>';
   if (!summaryHasDaySelection) elements.selectedDayPanel.hidden = true;
 
   try {
-    const entries = await Promise.all(monthDates.map(async (date) => {
+    const entries = await Promise.all(calendarDates.map(async (date) => {
       const snapshot = await firebaseModules.get(firebaseModules.ref(database, `days/${date}/bags`));
       return [date, dayBagsFromValue(snapshot.val())];
     }));
