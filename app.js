@@ -106,6 +106,7 @@ let summaryRequest = 0;
 let lookupRequest = 0;
 let lookupIndex = {};
 let lookupLoading = false;
+let lookupLoadedAt = 0;
 let database;
 let firebaseAuth;
 let firebaseModules;
@@ -899,6 +900,11 @@ function searchLookupIndex(query) {
 
 async function loadLookupData() {
   if (!database || !currentUser) return;
+  if (lookupLoading) return;
+  if (lookupLoadedAt && Date.now() - lookupLoadedAt < 60_000) {
+    searchLookupIndex(elements.lookupReference.value);
+    return;
+  }
   const request = ++lookupRequest;
   lookupLoading = true;
   lookupIndex = {};
@@ -922,10 +928,12 @@ async function loadLookupData() {
       });
     });
     lookupLoading = false;
+    lookupLoadedAt = Date.now();
     searchLookupIndex(elements.lookupReference.value);
   } catch (error) {
     if (request !== lookupRequest) return;
     lookupLoading = false;
+    lookupLoadedAt = 0;
     console.error("Could not load job bags for lookup:", error);
     elements.lookupResults.innerHTML = "";
     elements.lookupMessage.hidden = false;
@@ -1198,12 +1206,16 @@ async function loadSummary() {
   if (!summaryHasDaySelection) elements.selectedDayPanel.hidden = true;
 
   try {
-    const entries = await Promise.all(calendarDates.map(async (date) => {
-      const snapshot = await firebaseModules.get(firebaseModules.ref(database, `days/${date}/bags`));
-      return [date, dayBagsFromValue(snapshot.val())];
-    }));
+    const dateRangeQuery = firebaseModules.query(
+      firebaseModules.ref(database, "days"),
+      firebaseModules.orderByKey(),
+      firebaseModules.startAt(calendarDates[0]),
+      firebaseModules.endAt(calendarDates[calendarDates.length - 1]),
+    );
+    const snapshot = await firebaseModules.get(dateRangeQuery);
     if (request !== summaryRequest) return;
-    const bagsByDate = new Map(entries);
+    const days = snapshot.val() || {};
+    const bagsByDate = new Map(calendarDates.map((date) => [date, dayBagsFromValue(days[date]?.bags)]));
     renderCalendar(monthDates, selectedDate, bagsByDate);
     if (summaryHasDaySelection) renderSelectedDay(selectedDate, bagsByDate.get(selectedDate) || []);
   } catch (error) {
@@ -1229,6 +1241,7 @@ function handleAuthState(user) {
   canEdit = false;
   lookupIndex = {};
   lookupLoading = false;
+  lookupLoadedAt = 0;
   lookupRequest += 1;
   summaryRequest += 1;
   render();
@@ -1286,6 +1299,7 @@ function handleAuthState(user) {
     lookupRequest += 1;
     lookupIndex = {};
     lookupLoading = false;
+    lookupLoadedAt = 0;
     activeDay = "";
     jobs = [];
     canEdit = false;
@@ -1306,6 +1320,7 @@ function handleAuthState(user) {
     lookupRequest += 1;
     lookupIndex = {};
     lookupLoading = false;
+    lookupLoadedAt = 0;
     activeDay = "";
     jobs = [];
     canEdit = false;
@@ -1328,6 +1343,7 @@ async function removeJob(job) {
       firebaseModules.ref(database, `days/${activeDay}/bags/${job.id}`),
       { deleted: true },
     );
+    lookupLoadedAt = 0;
     showToast("Job bag marked as deleted.");
   } catch (error) {
     console.error("Could not mark the job bag as deleted:", error);
@@ -1497,6 +1513,7 @@ elements.form.addEventListener("submit", async (event) => {
     if (dateKey !== activeDay) showToday();
     const jobRef = firebaseModules.push(firebaseModules.ref(database, `days/${dateKey}/bags`));
     await firebaseModules.set(jobRef, { ...job, id: jobRef.key });
+    lookupLoadedAt = 0;
     haptic(25);
     celebrateJobAdded();
     elements.form.reset();
