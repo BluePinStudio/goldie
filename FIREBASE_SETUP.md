@@ -1,6 +1,6 @@
 # Firebase setup
 
-1. Create a Firebase project and register a Web app. Enable **Google** and **Email/Password** under Authentication → Sign-in method. Add the deployed site host (and `localhost` for local testing) to Authentication → Settings → Authorized domains.
+1. Create a Firebase project and register a Web app. Enable **Google** and **Email/Password** under Authentication → Sign-in method, and configure the password-reset email template under Authentication → Templates. Add the deployed site host (and `localhost` for local testing) to Authentication → Settings → Authorized domains.
 2. Create a Realtime Database. Copy its database URL and the Web app config into `firebase-config.js`. These web config values are public; never put a service-account key in this website.
 3. In Realtime Database → Rules, publish the current contents of `database.rules.json`. Republish the rules after updating this file.
 4. Have each staff member sign in or sign up with Google or email. Copy their Firebase user UID from the access screen; new accounts need administrator approval before they can use the app. In the Realtime Database **Data** tab, add a `members` object at the database root, with one child per UID. Example:

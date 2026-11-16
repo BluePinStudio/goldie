@@ -34,29 +34,55 @@
       <section class="auth-screen" id="auth-screen" hidden>
         <div class="auth-card">
           <h1 id="auth-heading">Log in</h1>
-          <p id="auth-copy">Log in or create an account to access the Benchmate 2000 features.</p>
+          <p id="auth-copy">Log in or create an account to access the Benchmate2000 features.</p>
           <div id="auth-methods">
-            <form class="email-auth-form" id="email-auth-form">
-              <div class="field">
-                <label class="field-label" for="auth-email">Email</label>
-                <input class="text-input" id="auth-email" name="email" type="email" autocomplete="email" required />
-              </div>
-              <div class="field">
-                <label class="field-label" for="auth-password">Password</label>
-                <input class="text-input" id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" required />
-              </div>
-              <label class="remember-option" for="remember-me">
-                <input id="remember-me" name="remember-me" type="checkbox" />
-                <span>Remember me on this device</span>
-              </label>
-              <button class="button button-primary auth-action" id="email-login" type="submit">Log in</button>
-              <button class="auth-sign-up-button auth-action" id="email-sign-up" type="button">Sign up by email</button>
-            </form>
-            <div class="auth-divider"><span>or</span></div>
-            <button class="button button-primary google-button" id="google-sign-in" type="button">
-              <span class="google-g" aria-hidden="true">G</span>
-              <span>Sign up or log in with Google</span>
-            </button>
+            <section id="login-view" aria-label="Log in">
+              <form class="email-auth-form" id="email-auth-form">
+                <div class="field">
+                  <label class="field-label" for="auth-email">Email</label>
+                  <input class="text-input" id="auth-email" name="email" type="email" autocomplete="email" required />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="auth-password">Password</label>
+                  <input class="text-input" id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" required />
+                </div>
+                <label class="remember-option" for="remember-me">
+                  <input id="remember-me" name="remember-me" type="checkbox" />
+                  <span>Remember me on this device</span>
+                </label>
+                <button class="button button-primary auth-action" id="email-login" type="submit">Log in</button>
+              </form>
+              <button class="auth-text-button forgot-password-button" id="forgot-password" type="button">Forgot password?</button>
+              <div class="auth-divider"><span>or</span></div>
+              <button class="button button-primary google-button" id="google-sign-in" type="button">
+                <span class="google-g" aria-hidden="true">G</span>
+                <span>Continue with Google</span>
+              </button>
+              <p class="auth-switch">Don't have an account? <button class="auth-text-button" id="show-sign-up" type="button">Sign up</button></p>
+            </section>
+            <section id="sign-up-view" aria-label="Sign up" hidden>
+              <form class="email-auth-form" id="email-sign-up-form">
+                <div class="field">
+                  <label class="field-label" for="sign-up-email">Email</label>
+                  <input class="text-input" id="sign-up-email" name="email" type="email" autocomplete="email" required />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="sign-up-password">Password</label>
+                  <input class="text-input" id="sign-up-password" name="password" type="password" autocomplete="new-password" minlength="6" required />
+                </div>
+                <label class="remember-option" for="sign-up-remember-me">
+                  <input id="sign-up-remember-me" name="remember-me" type="checkbox" />
+                  <span>Remember me on this device</span>
+                </label>
+                <button class="button button-primary auth-action" id="email-sign-up" type="submit">Sign up by email</button>
+              </form>
+              <div class="auth-divider"><span>or</span></div>
+              <button class="button button-primary google-button" id="google-sign-up" type="button">
+                <span class="google-g" aria-hidden="true">G</span>
+                <span>Sign up with Google</span>
+              </button>
+              <p class="auth-switch">Already have an account? <button class="auth-text-button" id="show-log-in" type="button">Log in</button></p>
+            </section>
           </div>
           <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
         </div>

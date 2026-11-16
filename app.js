@@ -6,13 +6,23 @@ const elements = {
   authCopy: document.querySelector("#auth-copy"),
   authMessage: document.querySelector("#auth-message"),
   authMethods: document.querySelector("#auth-methods"),
+  loginView: document.querySelector("#login-view"),
+  signUpView: document.querySelector("#sign-up-view"),
   emailAuthForm: document.querySelector("#email-auth-form"),
   authEmail: document.querySelector("#auth-email"),
   authPassword: document.querySelector("#auth-password"),
   rememberMe: document.querySelector("#remember-me"),
+  signUpForm: document.querySelector("#email-sign-up-form"),
+  signUpEmail: document.querySelector("#sign-up-email"),
+  signUpPassword: document.querySelector("#sign-up-password"),
+  signUpRememberMe: document.querySelector("#sign-up-remember-me"),
   emailLogin: document.querySelector("#email-login"),
   emailSignUp: document.querySelector("#email-sign-up"),
   googleSignIn: document.querySelector("#google-sign-in"),
+  googleSignUp: document.querySelector("#google-sign-up"),
+  forgotPassword: document.querySelector("#forgot-password"),
+  showSignUp: document.querySelector("#show-sign-up"),
+  showLogIn: document.querySelector("#show-log-in"),
   currencySelect: document.querySelector("#currency-select"),
   appShell: document.querySelector("#app-shell"),
   accountBar: document.querySelector("#account-bar"),
@@ -746,6 +756,17 @@ function showAuthMessage(message) {
   elements.authMessage.textContent = message;
 }
 
+function showAuthPage(page) {
+  const isSignUp = page === "sign-up";
+  elements.loginView.hidden = isSignUp;
+  elements.signUpView.hidden = !isSignUp;
+  elements.authHeading.textContent = isSignUp ? "Create your account" : "Log in";
+  elements.authCopy.textContent = isSignUp
+    ? "Create an account to access Benchmate2000 features."
+    : "Log in or create an account to access the Benchmate2000 features.";
+  showAuthMessage("");
+}
+
 async function recordUserActivity({ loginTime = null, inspectedBag = null, calendarDate = null } = {}) {
   const user = currentUser;
   if (!database || !user) return;
@@ -979,9 +1000,7 @@ function handleAuthState(user) {
     elements.appShell.hidden = true;
     elements.authScreen.hidden = false;
     elements.authMethods.hidden = false;
-    elements.authHeading.textContent = "Log in";
-    elements.authCopy.textContent = "Log in or create an account to access the Benchmate 2000 features.";
-    showAuthMessage("");
+    showAuthPage("log-in");
     return;
   }
 
@@ -1234,9 +1253,16 @@ function setAuthBusy(isBusy) {
     elements.authEmail,
     elements.authPassword,
     elements.rememberMe,
+    elements.signUpEmail,
+    elements.signUpPassword,
+    elements.signUpRememberMe,
     elements.emailLogin,
     elements.emailSignUp,
     elements.googleSignIn,
+    elements.googleSignUp,
+    elements.forgotPassword,
+    elements.showSignUp,
+    elements.showLogIn,
   ]) {
     control.disabled = isBusy;
   }
@@ -1246,13 +1272,16 @@ function authErrorMessage(error, method) {
   switch (error.code) {
     case "auth/invalid-email":
       return "Enter a valid email address.";
+    case "auth/user-not-found":
+      return method === "Password recovery"
+        ? "If an account exists for that email, a password reset email has been sent."
+        : "The email or password is incorrect.";
     case "auth/email-already-in-use":
       return "An account with this email already exists. Try logging in instead.";
     case "auth/weak-password":
       return "Choose a stronger password with at least 6 characters.";
     case "auth/invalid-credential":
     case "auth/invalid-login-credentials":
-    case "auth/user-not-found":
     case "auth/wrong-password":
       return "The email or password is incorrect.";
     case "auth/user-disabled":
@@ -1270,23 +1299,26 @@ function authErrorMessage(error, method) {
   }
 }
 
-async function setAuthPersistence() {
-  const persistence = elements.rememberMe.checked
+async function setAuthPersistence(rememberMe) {
+  const persistence = rememberMe.checked
     ? firebaseModules.browserLocalPersistence
     : firebaseModules.browserSessionPersistence;
   await firebaseModules.setPersistence(firebaseAuth, persistence);
 }
 
 async function authenticateWithEmail(createAccount) {
-  if (!elements.emailAuthForm.reportValidity()) return;
+  const form = createAccount ? elements.signUpForm : elements.emailAuthForm;
+  const emailInput = createAccount ? elements.signUpEmail : elements.authEmail;
+  const passwordInput = createAccount ? elements.signUpPassword : elements.authPassword;
+  const rememberMe = createAccount ? elements.signUpRememberMe : elements.rememberMe;
+  if (!form.reportValidity()) return;
 
   setAuthBusy(true);
   showAuthMessage("");
-  elements.authPassword.autocomplete = createAccount ? "new-password" : "current-password";
   try {
-    await setAuthPersistence();
-    const email = elements.authEmail.value.trim();
-    const password = elements.authPassword.value;
+    await setAuthPersistence(rememberMe);
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
     if (createAccount) {
       await firebaseModules.createUserWithEmailAndPassword(firebaseAuth, email, password);
     } else {
@@ -1300,19 +1332,44 @@ async function authenticateWithEmail(createAccount) {
   }
 }
 
+async function sendPasswordRecovery() {
+  if (!elements.authEmail.reportValidity()) return;
+
+  setAuthBusy(true);
+  showAuthMessage("");
+  try {
+    await firebaseModules.sendPasswordResetEmail(firebaseAuth, elements.authEmail.value.trim());
+    showAuthMessage("If an account exists for that email, a password reset email has been sent.");
+  } catch (error) {
+    console.error("Password recovery failed:", error);
+    showAuthMessage(authErrorMessage(error, "Password recovery"));
+  } finally {
+    setAuthBusy(false);
+  }
+}
+
 elements.emailAuthForm.addEventListener("submit", (event) => {
   event.preventDefault();
   void authenticateWithEmail(false);
 });
-elements.emailSignUp.addEventListener("click", () => {
+elements.signUpForm.addEventListener("submit", (event) => {
+  event.preventDefault();
   void authenticateWithEmail(true);
+});
+elements.forgotPassword.addEventListener("click", sendPasswordRecovery);
+elements.showSignUp.addEventListener("click", () => {
+  showAuthPage("sign-up");
+  elements.signUpEmail.focus();
+});
+elements.showLogIn.addEventListener("click", () => {
+  showAuthPage("log-in");
+  elements.authEmail.focus();
 });
 
 async function start() {
   elements.authScreen.hidden = false;
-  elements.authHeading.textContent = "Log in";
+  showAuthPage("log-in");
   setAuthBusy(true);
-  showAuthMessage("");
   try {
     const response = await fetch("./prices.json", { cache: "no-store" });
     if (!response.ok) throw new Error(`Could not load prices.json (HTTP ${response.status}).`);
@@ -1344,11 +1401,11 @@ async function start() {
   }
 }
 
-elements.googleSignIn.addEventListener("click", async () => {
+async function authenticateWithGoogle(rememberMe) {
   setAuthBusy(true);
   showAuthMessage("");
   try {
-    await setAuthPersistence();
+    await setAuthPersistence(rememberMe);
     const provider = new firebaseModules.GoogleAuthProvider();
     await firebaseModules.signInWithPopup(firebaseAuth, provider);
   } catch (error) {
@@ -1365,6 +1422,13 @@ elements.googleSignIn.addEventListener("click", async () => {
   } finally {
     setAuthBusy(false);
   }
+}
+
+elements.googleSignIn.addEventListener("click", () => {
+  void authenticateWithGoogle(elements.rememberMe);
+});
+elements.googleSignUp.addEventListener("click", () => {
+  void authenticateWithGoogle(elements.signUpRememberMe);
 });
 
 async function signOut() {

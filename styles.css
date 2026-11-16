@@ -50,12 +50,14 @@ button { cursor: pointer; }
 .remember-option { display: flex; align-items: center; gap: 8px; color: #77796e; font-size: 11px; cursor: pointer; }
 .remember-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--olive); }
 .auth-action { width: 100%; min-height: 44px; justify-content: center; font-size: 12px; }
-.auth-sign-up-button { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 13px; color: var(--olive-dark); background: #f5f4ee; border: 1px solid #e4e3da; border-radius: 7px; font-size: 12px; font-weight: 600; }
-.auth-sign-up-button:hover { background: #eeede6; }
+.auth-text-button { padding: 0; color: var(--olive-dark); background: transparent; border: 0; font-size: 11px; font-weight: 600; }
+.auth-text-button:hover { text-decoration: underline; }
+.forgot-password-button { display: block; margin: 10px 0 0 auto; }
 .auth-divider { display: flex; align-items: center; gap: 12px; margin: 17px 0; color: #999a90; font-size: 10px; }
 .auth-divider::before, .auth-divider::after { flex: 1; height: 1px; background: var(--line); content: ""; }
 .google-button { width: 100%; justify-content: center; min-height: 48px; font-size: 12px; }
 .google-g { color: #fff; font-weight: 700; font-size: 16px; }
+.auth-switch { margin: 18px 0 0; color: #77796e; font-size: 11px; }
 .auth-message { min-height: 18px; margin: 14px 0 0; color: #74766c; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
 .account-bar .text-button { min-height: 40px; }
 .bags-date { display: block; margin-top: 6px; color: #888a80; font-size: 11px; }
