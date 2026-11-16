@@ -1,6 +1,6 @@
 {
   "currency": "CAD",
-  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace soldering and ring sizing up use the same first/additional pricing. Engraving has one setup fee and a per-character rate for rings and necklaces. Enter custom-work prices on each job bag.",
+  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace soldering, ring sizing up, and retip prongs use first/additional pricing. Engraving has one setup fee and a per-character rate for rings and necklaces. Enter custom-work prices on each job bag.",
   "materials": [
     { "id": "gold-10k", "name": "10k gold" },
     { "id": "gold-14k", "name": "14k gold" },
@@ -110,8 +110,13 @@
       "refinish": 50,
       "refinish-rhodium": 85,
       "rhodium-with-repair": 65,
-      "retip-prongs-per-prong": 55,
-      "retip-beads-per-bead": 45,
+      "retip-prongs": {
+        "silver": { "first": 25, "additional": 10 },
+        "gold-10k": { "first": 40, "additional": 20 },
+        "gold-14k": { "first": 45, "additional": 25 },
+        "gold-18k": { "first": 50, "additional": 30 },
+        "platinum": { "first": 60, "additional": 35 }
+      },
       "reset-stone": 80,
       "solder-rings-bottom": { "silver": 50, "gold-10k": 60, "gold-14k": 70, "gold-18k": 90, "platinum": 80 },
       "solder-rings-top-and-bottom": { "silver": 75, "gold-10k": 100, "gold-14k": 110, "gold-18k": 130, "platinum": 120 },
@@ -148,8 +153,7 @@
       { "id": "refinish", "name": "Refinish", "priceKey": "refinish" },
       { "id": "refinish-rhodium", "name": "Refinish and rhodium plating", "priceKey": "refinish-rhodium", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "excludedGoldColors": ["yellow"] },
       { "id": "rhodium-with-repair", "name": "Rhodium plating with another repair", "priceKey": "rhodium-with-repair", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "excludedGoldColors": ["yellow"], "requiresOtherTask": true },
-      { "id": "retip-prongs", "name": "Retip prongs", "priceKey": "retip-prongs-per-prong", "quantityLabel": "Prongs" },
-      { "id": "retip-beads", "name": "Retip beads", "priceKey": "retip-beads-per-bead", "quantityLabel": "Beads" },
+      { "id": "retip-prongs", "name": "Retip prongs", "materialPriceTable": "retip-prongs", "quantityLabel": "Prongs" },
       { "id": "reset-stone", "name": "Reset stone", "priceKey": "reset-stone" },
       { "id": "solder-rings-bottom", "name": "Solder two rings together (bottom only)", "materialPriceTable": "solder-rings-bottom" },
       { "id": "solder-rings-top-and-bottom", "name": "Solder two rings together (top and bottom)", "materialPriceTable": "solder-rings-top-and-bottom" },

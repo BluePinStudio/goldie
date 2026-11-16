@@ -215,8 +215,8 @@ async function fetchMetalSpotQuote(symbol) {
   return quote;
 }
 
-function roundedSpotPerGram(pricePerOunce) {
-  return money(Math.round(pricePerOunce / GRAMS_PER_TROY_OUNCE));
+function spotPerGram(pricePerOunce) {
+  return money(pricePerOunce / GRAMS_PER_TROY_OUNCE);
 }
 
 function formatQuoteUpdatedAt(quote) {
@@ -257,7 +257,7 @@ async function loadMetalSpotPrices() {
 
   if (silverResult.status === "fulfilled") {
     const silver = silverResult.value;
-    elements.silverPriceValue.textContent = roundedSpotPerGram(silver.price);
+    elements.silverPriceValue.textContent = spotPerGram(silver.price);
     const updatedAt = formatQuoteUpdatedAt(silver);
     if (updatedAt) updatedAtValues.push(`Silver ${updatedAt}`);
   } else {
@@ -283,8 +283,11 @@ function taskRates(type, task) {
     : null;
   if (task.materialPriceTable) {
     const price = rates[task.materialPriceTable]?.[material?.id];
-    if (!Number.isFinite(price)) return null;
-    return { unit: price, additional: null, setup: 0 };
+    if (Number.isFinite(price)) return { unit: price, additional: null, setup: 0 };
+    if (price && Number.isFinite(price.first) && Number.isFinite(price.additional)) {
+      return { unit: price.first, additional: price.additional, setup: 0 };
+    }
+    return null;
   }
   if (task.priceTable) {
     const table = rates[task.priceTable];
@@ -357,7 +360,8 @@ function initializeCatalog(data) {
             ? rates[task.materialPriceTable]
               && typeof rates[task.materialPriceTable] === "object"
               && Object.keys(rates[task.materialPriceTable]).length > 0
-              && Object.values(rates[task.materialPriceTable]).every(Number.isFinite)
+              && Object.values(rates[task.materialPriceTable]).every((rate) => Number.isFinite(rate)
+                || Boolean(rate) && Number.isFinite(rate.first) && Number.isFinite(rate.additional))
             : Number.isFinite(rates[task.priceKey]))
         && (task.additionalPriceKey === undefined || Number.isFinite(rates[task.additionalPriceKey]))
         && (task.setupPriceKey === undefined || Number.isFinite(rates[task.setupPriceKey]))
@@ -492,6 +496,16 @@ function updateConditionalTaskVisibility() {
     if (selected.has("quick-polish")) {
       hiddenTasks.add("refinish");
       hiddenTasks.add("refinish-rhodium");
+    }
+    if (selected.has("unsolder-rings")) {
+      hiddenTasks.add("solder-rings-bottom");
+      hiddenTasks.add("solder-rings-top-and-bottom");
+    } else if (selected.has("solder-rings-bottom")) {
+      hiddenTasks.add("solder-rings-top-and-bottom");
+      hiddenTasks.add("unsolder-rings");
+    } else if (selected.has("solder-rings-top-and-bottom")) {
+      hiddenTasks.add("solder-rings-bottom");
+      hiddenTasks.add("unsolder-rings");
     }
     for (const id of hiddenTasks) {
       const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(id)}`);
