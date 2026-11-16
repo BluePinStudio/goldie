@@ -696,7 +696,13 @@ function loadLookupJob(date, jobId) {
     elements.lookupDetail.innerHTML = '<p class="lookup-message">This job bag is no longer available. Search again to refresh.</p>';
     return;
   }
-  void recordUserActivity({ inspectedBag: true });
+  void recordUserActivity({
+    inspectedBag: {
+      date,
+      jobId,
+      reference: job.reference || "",
+    },
+  });
   const tasks = Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {});
   const piece = job.type === "custom"
     ? `Custom · ${job.customItem || ""}`
@@ -733,12 +739,12 @@ function showAuthMessage(message) {
   elements.authMessage.textContent = message;
 }
 
-async function recordUserActivity({ loginTime = null, inspectedBag = false } = {}) {
+async function recordUserActivity({ loginTime = null, inspectedBag = null, calendarDate = null } = {}) {
   const user = currentUser;
   if (!database || !user) return;
 
   const now = Date.now();
-  if (!loginTime && !inspectedBag && now - lastActivityWriteAt < 60_000) return;
+  if (!loginTime && !inspectedBag && !calendarDate && now - lastActivityWriteAt < 60_000) return;
   lastActivityWriteAt = now;
 
   const loginMarker = typeof loginTime === "string" ? loginTime : "";
@@ -777,6 +783,24 @@ async function recordUserActivity({ loginTime = null, inspectedBag = false } = {
       if (loginMarker) updatedActivity.lastRecordedLogin = loginMarker;
       return updatedActivity;
     }, { applyLocally: false });
+
+    const detailWrites = [];
+    if (inspectedBag) {
+      detailWrites.push(firebaseModules.set(
+        firebaseModules.ref(database, `activityDetails/${user.uid}/inspectedJobBags/${inspectedBag.date}/${inspectedBag.jobId}`),
+        {
+          reference: String(inspectedBag.reference || ""),
+          lastInspectedAt: now,
+        },
+      ));
+    }
+    if (calendarDate) {
+      detailWrites.push(firebaseModules.set(
+        firebaseModules.ref(database, `activityDetails/${user.uid}/calendarDaysViewed/${calendarDate}`),
+        now,
+      ));
+    }
+    await Promise.all(detailWrites);
   } catch (error) {
     lastActivityWriteAt = 0;
     console.error("Could not save user activity:", error);
@@ -887,6 +911,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
   elements.calendarGrid.querySelectorAll("[data-calendar-date]").forEach((button) => {
     button.addEventListener("click", () => {
       const dateKey = button.dataset.calendarDate;
+      void recordUserActivity({ calendarDate: dateKey });
       elements.summaryDate.value = dateKey;
       summaryHasDaySelection = true;
       renderCalendar(monthDates, dateKey, bagsByDate);

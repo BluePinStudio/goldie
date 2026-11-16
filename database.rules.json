@@ -35,6 +35,30 @@
         }
       }
     },
+    "activityDetails": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "inspectedJobBags": {
+          "$date": {
+            "$jobId": {
+              ".validate": "newData.hasChildren(['reference', 'lastInspectedAt'])",
+              "reference": {
+                ".validate": "newData.isString()"
+              },
+              "lastInspectedAt": {
+                ".validate": "newData.isNumber() && newData.val() >= 0"
+              }
+            }
+          }
+        },
+        "calendarDaysViewed": {
+          "$date": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          }
+        }
+      }
+    },
     "days": {
       ".read": "auth != null && root.child('members').child(auth.uid).child('active').val() === true && (root.child('members').child(auth.uid).child('role').val() === 'editor' || root.child('members').child(auth.uid).child('role').val() === 'viewer')",
       "$date": {
