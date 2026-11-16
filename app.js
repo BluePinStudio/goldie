@@ -5,6 +5,14 @@ const elements = {
   authHeading: document.querySelector("#auth-heading"),
   authCopy: document.querySelector("#auth-copy"),
   authMessage: document.querySelector("#auth-message"),
+  metalPricesToggle: document.querySelector("#metal-prices-toggle"),
+  goldPriceValue: document.querySelector("#gold-price-value"),
+  silverPriceValue: document.querySelector("#silver-price-value"),
+  gold10kPrice: document.querySelector("#gold-10k-price"),
+  gold14kPrice: document.querySelector("#gold-14k-price"),
+  gold18kPrice: document.querySelector("#gold-18k-price"),
+  gold24kPrice: document.querySelector("#gold-24k-price"),
+  metalPricesUpdated: document.querySelector("#metal-prices-updated"),
   authMethods: document.querySelector("#auth-methods"),
   loginView: document.querySelector("#login-view"),
   signUpView: document.querySelector("#sign-up-view"),
@@ -105,6 +113,7 @@ let unsubscribeDay;
 let activeDay = "";
 let toastTimeout;
 let lastActivityWriteAt = 0;
+const GRAMS_PER_TROY_OUNCE = 31.1034768;
 
 function haptic(duration = 12) {
   if ("vibrate" in navigator) navigator.vibrate(duration);
@@ -193,6 +202,76 @@ function money(amount) {
     minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
     maximumFractionDigits: 2,
   });
+}
+
+async function fetchMetalSpotQuote(symbol) {
+  const response = await fetch(`https://api.gold-api.com/price/${symbol}/CAD`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`${symbol} price request failed (HTTP ${response.status}).`);
+
+  const quote = await response.json();
+  if (quote.symbol !== symbol || quote.currency !== "CAD" || !Number.isFinite(quote.price) || quote.price <= 0) {
+    throw new Error(`${symbol} price response did not contain a valid CAD quote.`);
+  }
+  return quote;
+}
+
+function roundedSpotPerGram(pricePerOunce) {
+  return money(Math.round(pricePerOunce / GRAMS_PER_TROY_OUNCE));
+}
+
+function formatQuoteUpdatedAt(quote) {
+  const updatedAt = new Date(quote.updatedAt);
+  if (Number.isNaN(updatedAt.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "America/Toronto",
+  }).format(updatedAt);
+}
+
+async function loadMetalSpotPrices() {
+  const [goldResult, silverResult] = await Promise.allSettled([
+    fetchMetalSpotQuote("XAU"),
+    fetchMetalSpotQuote("XAG"),
+  ]);
+  const updatedAtValues = [];
+
+  if (goldResult.status === "fulfilled") {
+    const gold = goldResult.value;
+    const pureGoldPerGram = gold.price / GRAMS_PER_TROY_OUNCE;
+    elements.gold10kPrice.textContent = money(Math.round(pureGoldPerGram * 10 / 24));
+    elements.gold14kPrice.textContent = money(Math.round(pureGoldPerGram * 14 / 24));
+    elements.gold18kPrice.textContent = money(Math.round(pureGoldPerGram * 18 / 24));
+    elements.gold24kPrice.textContent = money(Math.round(pureGoldPerGram));
+    elements.goldPriceValue.textContent = money(Math.round(pureGoldPerGram));
+    const updatedAt = formatQuoteUpdatedAt(gold);
+    if (updatedAt) updatedAtValues.push(`Gold ${updatedAt}`);
+  } else {
+    console.error("Could not load live gold spot price:", goldResult.reason);
+    elements.gold10kPrice.textContent = "Unavailable";
+    elements.gold14kPrice.textContent = "Unavailable";
+    elements.gold18kPrice.textContent = "Unavailable";
+    elements.gold24kPrice.textContent = "Unavailable";
+    elements.goldPriceValue.textContent = "Unavailable";
+  }
+
+  if (silverResult.status === "fulfilled") {
+    const silver = silverResult.value;
+    elements.silverPriceValue.textContent = roundedSpotPerGram(silver.price);
+    const updatedAt = formatQuoteUpdatedAt(silver);
+    if (updatedAt) updatedAtValues.push(`Silver ${updatedAt}`);
+  } else {
+    console.error("Could not load live silver spot price:", silverResult.reason);
+    elements.silverPriceValue.textContent = "Unavailable";
+  }
+
+  elements.metalPricesUpdated.textContent = updatedAtValues.length
+    ? `Updated ${updatedAtValues.join(" · ")}. Refreshes every five minutes.`
+    : "Update time unavailable. Refreshes every five minutes.";
+  elements.metalPricesToggle.setAttribute(
+    "aria-label",
+    `Live metal prices. Gold 24 karat ${elements.goldPriceValue.textContent} CAD per gram. Expand for silver and other gold karats.`,
+  );
 }
 
 function taskRates(type, task) {
@@ -1491,6 +1570,10 @@ async function signOut() {
 
 elements.signOut.addEventListener("click", signOut);
 start();
+void loadMetalSpotPrices();
+setInterval(() => {
+  void loadMetalSpotPrices();
+}, 5 * 60_000);
 setInterval(() => {
   if (!elements.appShell.hidden) showToday();
 }, 60_000);

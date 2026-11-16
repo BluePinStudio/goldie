@@ -14,6 +14,31 @@
         <h1 class="brand">
           <span>Benchmate2000</span>
         </h1>
+        <details class="metal-prices" id="metal-prices">
+          <summary class="metal-prices-toggle" id="metal-prices-toggle">
+            <span class="metal-prices-label">Metal spot</span>
+            <strong id="gold-price-value">Loading…</strong>
+            <span class="metal-prices-unit">24k CAD/g</span>
+          </summary>
+          <div class="metal-prices-panel">
+            <h2>Estimated spot value per gram</h2>
+            <table class="metal-prices-table">
+              <thead>
+                <tr><th scope="col">Metal</th><th scope="col">CAD/g</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Silver</th><td id="silver-price-value">Loading…</td></tr>
+                <tr><th scope="row">Gold 10k</th><td id="gold-10k-price">Loading…</td></tr>
+                <tr><th scope="row">Gold 14k</th><td id="gold-14k-price">Loading…</td></tr>
+                <tr><th scope="row">Gold 18k</th><td id="gold-18k-price">Loading…</td></tr>
+                <tr><th scope="row">Gold 24k</th><td id="gold-24k-price">Loading…</td></tr>
+              </tbody>
+            </table>
+            <p class="metal-prices-note">Gold values are estimated by karat purity and rounded to the nearest dollar. Actual metal value may differ.</p>
+            <p class="metal-prices-updated" id="metal-prices-updated" aria-live="polite">Loading current prices…</p>
+            <a class="metal-prices-source" href="https://gold-api.com/" target="_blank" rel="noopener noreferrer">Source: Gold-API</a>
+          </div>
+        </details>
         <div class="topbar-actions">
           <label class="currency-selector" for="currency-select">
             <span>Currency</span>
