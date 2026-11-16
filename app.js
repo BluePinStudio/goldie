@@ -30,14 +30,10 @@ const elements = {
   nextMonth: document.querySelector("#next-month"),
   todayButton: document.querySelector("#today-button"),
   calendarMonthTotal: document.querySelector("#calendar-month-total"),
-  selectedDayTotalLabel: document.querySelector("#selected-day-total-label"),
-  selectedTotal: document.querySelector("#selected-total"),
   selectedDayPanel: document.querySelector("#selected-day-panel"),
   selectedDayDate: document.querySelector("#selected-day-date"),
   selectedDayList: document.querySelector("#selected-day-list"),
   selectedDayEmpty: document.querySelector("#selected-day-empty"),
-  weekTotal: document.querySelector("#week-total"),
-  monthTotal: document.querySelector("#month-total"),
   summaryError: document.querySelector("#summary-error"),
   bagsDate: document.querySelector("#bags-date"),
   form: document.querySelector("#job-form"),
@@ -129,18 +125,6 @@ function torontoDateKey(date = new Date()) {
   }).formatToParts(date);
   const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
   return `${values.year}-${values.month}-${values.day}`;
-}
-
-function shiftDateKey(dateKey, offset) {
-  const date = new Date(`${dateKey}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
-
-function calendarWeekDates(dateKey) {
-  const day = new Date(`${dateKey}T12:00:00Z`).getUTCDay();
-  const sunday = shiftDateKey(dateKey, -day);
-  return Array.from({ length: 7 }, (_, index) => shiftDateKey(sunday, index));
 }
 
 function calendarMonthDates(dateKey) {
@@ -808,6 +792,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
     year: "numeric",
     timeZone: "UTC",
   }).format(monthDate);
+  elements.calendarMonthTotal.textContent = money(totalForDates(monthDates, bagsByDate));
   const calendarDays = [
     ...Array.from({ length: firstDay }, () => null),
     ...monthDates,
@@ -853,21 +838,9 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
       elements.summaryDate.value = dateKey;
       summaryHasDaySelection = true;
       renderCalendar(monthDates, dateKey, bagsByDate);
-      renderSummaryTotals(dateKey, bagsByDate);
       renderSelectedDay(dateKey, bagsByDate.get(dateKey) || []);
     });
   });
-}
-
-function renderSummaryTotals(selectedDate, bagsByDate) {
-  const dayTotal = totalForDates([selectedDate], bagsByDate);
-  const weekToDate = calendarWeekDates(selectedDate).filter((date) => date <= selectedDate);
-  const monthToDate = calendarMonthDates(selectedDate).filter((date) => date <= selectedDate);
-  elements.calendarMonthTotal.textContent = money(totalForDates(calendarMonthDates(selectedDate), bagsByDate));
-  elements.selectedDayTotalLabel.textContent = selectedDate === torontoDateKey() ? "TODAY'S TOTAL" : "DAY TOTAL";
-  elements.selectedTotal.textContent = money(dayTotal);
-  elements.weekTotal.textContent = money(totalForDates(weekToDate, bagsByDate));
-  elements.monthTotal.textContent = money(totalForDates(monthToDate, bagsByDate));
 }
 
 async function loadSummary() {
@@ -875,21 +848,18 @@ async function loadSummary() {
   const request = ++summaryRequest;
   const selectedDate = elements.summaryDate.value;
   const monthDates = calendarMonthDates(selectedDate);
-  const weekToDate = calendarWeekDates(selectedDate).filter((date) => date <= selectedDate);
-  const dateKeys = [...new Set([...monthDates, ...weekToDate])];
   elements.summaryError.hidden = true;
   elements.calendarGrid.innerHTML = '<p class="loading-message">Loading calendar…</p>';
   if (!summaryHasDaySelection) elements.selectedDayPanel.hidden = true;
 
   try {
-    const entries = await Promise.all(dateKeys.map(async (date) => {
+    const entries = await Promise.all(monthDates.map(async (date) => {
       const snapshot = await firebaseModules.get(firebaseModules.ref(database, `days/${date}/bags`));
       return [date, dayBagsFromValue(snapshot.val())];
     }));
     if (request !== summaryRequest) return;
     const bagsByDate = new Map(entries);
     renderCalendar(monthDates, selectedDate, bagsByDate);
-    renderSummaryTotals(selectedDate, bagsByDate);
     if (summaryHasDaySelection) renderSelectedDay(selectedDate, bagsByDate.get(selectedDate) || []);
   } catch (error) {
     if (request !== summaryRequest) return;
