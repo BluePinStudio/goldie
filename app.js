@@ -5,6 +5,13 @@ const elements = {
   authHeading: document.querySelector("#auth-heading"),
   authCopy: document.querySelector("#auth-copy"),
   authMessage: document.querySelector("#auth-message"),
+  authMethods: document.querySelector("#auth-methods"),
+  emailAuthForm: document.querySelector("#email-auth-form"),
+  authEmail: document.querySelector("#auth-email"),
+  authPassword: document.querySelector("#auth-password"),
+  rememberMe: document.querySelector("#remember-me"),
+  emailLogin: document.querySelector("#email-login"),
+  emailSignUp: document.querySelector("#email-sign-up"),
   googleSignIn: document.querySelector("#google-sign-in"),
   currencySelect: document.querySelector("#currency-select"),
   appShell: document.querySelector("#app-shell"),
@@ -971,9 +978,9 @@ function handleAuthState(user) {
     elements.roleBadge.textContent = "";
     elements.appShell.hidden = true;
     elements.authScreen.hidden = false;
-    elements.googleSignIn.hidden = false;
-    elements.authHeading.textContent = "Sign in";
-    elements.authCopy.textContent = "Sign in with your Google account to access the Journal, Summary, and Lookup.";
+    elements.authMethods.hidden = false;
+    elements.authHeading.textContent = "Log in";
+    elements.authCopy.textContent = "Log in or create an account to access the Journal, Summary, and Lookup.";
     showAuthMessage("");
     return;
   }
@@ -982,7 +989,7 @@ function handleAuthState(user) {
   elements.accountName.textContent = firstName;
   elements.authScreen.hidden = false;
   elements.appShell.hidden = true;
-  elements.googleSignIn.hidden = true;
+  elements.authMethods.hidden = true;
   elements.authHeading.textContent = "Checking access";
   elements.authCopy.textContent = "";
   showAuthMessage("");
@@ -1027,11 +1034,11 @@ function handleAuthState(user) {
     render();
     elements.appShell.hidden = true;
     elements.authScreen.hidden = false;
-    elements.googleSignIn.hidden = true;
+    elements.authMethods.hidden = true;
     elements.authHeading.textContent = member?.active === true ? "Role not configured" : "Access not enabled";
     elements.authCopy.textContent = member?.active === true
       ? "Ask an administrator to assign this account the Editor or Viewer role."
-      : "Ask an administrator to approve this Google account.";
+      : "Ask an administrator to approve this account. If you just signed up, share your Firebase user ID with them.";
     showAuthMessage(`Firebase user ID: ${user.uid}`);
   }, (error) => {
     console.error("Could not check Firebase member access:", error);
@@ -1047,7 +1054,7 @@ function handleAuthState(user) {
     render();
     elements.appShell.hidden = true;
     elements.authScreen.hidden = false;
-    elements.googleSignIn.hidden = true;
+    elements.authMethods.hidden = true;
     elements.authHeading.textContent = "Could not check access";
     elements.authCopy.textContent = "Check the database rules and your connection.";
     showAuthMessage(`Firebase user ID: ${user.uid}`);
@@ -1222,10 +1229,89 @@ elements.form.addEventListener("submit", async (event) => {
   }
 });
 
+function setAuthBusy(isBusy) {
+  for (const control of [
+    elements.authEmail,
+    elements.authPassword,
+    elements.rememberMe,
+    elements.emailLogin,
+    elements.emailSignUp,
+    elements.googleSignIn,
+  ]) {
+    control.disabled = isBusy;
+  }
+}
+
+function authErrorMessage(error, method) {
+  switch (error.code) {
+    case "auth/invalid-email":
+      return "Enter a valid email address.";
+    case "auth/email-already-in-use":
+      return "An account with this email already exists. Try logging in instead.";
+    case "auth/weak-password":
+      return "Choose a stronger password with at least 6 characters.";
+    case "auth/invalid-credential":
+    case "auth/invalid-login-credentials":
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+      return "The email or password is incorrect.";
+    case "auth/user-disabled":
+      return "This account is disabled. Contact an administrator.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Wait a little and try again.";
+    case "auth/network-request-failed":
+      return "Could not connect to Firebase. Check your connection and try again.";
+    case "auth/operation-not-allowed":
+      return method === "Google"
+        ? "Enable Google sign-in in Firebase Authentication and try again."
+        : "Enable Email/Password sign-in in Firebase Authentication and try again.";
+    default:
+      return `${method} failed. Check your Firebase Authentication setup and try again.`;
+  }
+}
+
+async function setAuthPersistence() {
+  const persistence = elements.rememberMe.checked
+    ? firebaseModules.browserLocalPersistence
+    : firebaseModules.browserSessionPersistence;
+  await firebaseModules.setPersistence(firebaseAuth, persistence);
+}
+
+async function authenticateWithEmail(createAccount) {
+  if (!elements.emailAuthForm.reportValidity()) return;
+
+  setAuthBusy(true);
+  showAuthMessage("");
+  elements.authPassword.autocomplete = createAccount ? "new-password" : "current-password";
+  try {
+    await setAuthPersistence();
+    const email = elements.authEmail.value.trim();
+    const password = elements.authPassword.value;
+    if (createAccount) {
+      await firebaseModules.createUserWithEmailAndPassword(firebaseAuth, email, password);
+    } else {
+      await firebaseModules.signInWithEmailAndPassword(firebaseAuth, email, password);
+    }
+  } catch (error) {
+    console.error(createAccount ? "Email sign-up failed:" : "Email login failed:", error);
+    showAuthMessage(authErrorMessage(error, createAccount ? "Email sign-up" : "Email login"));
+  } finally {
+    setAuthBusy(false);
+  }
+}
+
+elements.emailAuthForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void authenticateWithEmail(false);
+});
+elements.emailSignUp.addEventListener("click", () => {
+  void authenticateWithEmail(true);
+});
+
 async function start() {
   elements.authScreen.hidden = false;
-  elements.authHeading.textContent = "Sign in";
-  elements.googleSignIn.disabled = true;
+  elements.authHeading.textContent = "Log in";
+  setAuthBusy(true);
   showAuthMessage("");
   try {
     const response = await fetch("./prices.json", { cache: "no-store" });
@@ -1246,22 +1332,23 @@ async function start() {
     const firebaseApp = appSdk.initializeApp(firebaseConfig);
     firebaseAuth = authSdk.getAuth(firebaseApp);
     database = databaseSdk.getDatabase(firebaseApp);
-    elements.googleSignIn.disabled = false;
     authSdk.onAuthStateChanged(firebaseAuth, handleAuthState, (error) => {
       console.error("Firebase sign-in state failed:", error);
       showAuthMessage("Could not connect to Firebase Authentication. Check your configuration.");
     });
+    setAuthBusy(false);
   } catch (error) {
     console.error("Could not initialize the application:", error);
     showAuthMessage(`Could not load the app. Check the Firebase configuration, network, and prices.json. ${error.message}`);
-    elements.googleSignIn.disabled = true;
+    setAuthBusy(true);
   }
 }
 
 elements.googleSignIn.addEventListener("click", async () => {
-  elements.googleSignIn.disabled = true;
+  setAuthBusy(true);
   showAuthMessage("");
   try {
+    await setAuthPersistence();
     const provider = new firebaseModules.GoogleAuthProvider();
     await firebaseModules.signInWithPopup(firebaseAuth, provider);
   } catch (error) {
@@ -1274,9 +1361,9 @@ elements.googleSignIn.addEventListener("click", async () => {
       }
     }
     console.error("Google sign-in failed:", error);
-    showAuthMessage("Google sign-in failed. Check your Firebase Authentication setup and try again.");
+    showAuthMessage(authErrorMessage(error, "Google"));
   } finally {
-    elements.googleSignIn.disabled = false;
+    setAuthBusy(false);
   }
 });
 
