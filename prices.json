@@ -1,6 +1,6 @@
 {
   "currency": "CAD",
-  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace soldering, ring sizing up, and retip prongs use first/additional pricing. Engraving has one setup fee and a per-character rate for rings and necklaces. Enter custom-work prices on each job bag.",
+  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace soldering, rebuilding, ring sizing up, and retip prongs use first/additional pricing. Engraving has one setup fee and a per-character rate for rings and necklaces. Enter custom-work prices on each job bag.",
   "materials": [
     { "id": "gold-10k", "name": "10k gold" },
     { "id": "gold-14k", "name": "14k gold" },
@@ -131,8 +131,13 @@
         "gold-18k": { "first": 45, "additional": 35 },
         "platinum": { "first": 50, "additional": 35 }
       },
-      "rebuild-first": 50,
-      "rebuild-additional": 50,
+      "rebuild": {
+        "silver": { "first": 45, "additional": 30 },
+        "gold-10k": { "first": 50, "additional": 40 },
+        "gold-14k": { "first": 55, "additional": 45 },
+        "gold-18k": { "first": 60, "additional": 50 },
+        "platinum": { "first": 65, "additional": 50 }
+      },
       "chain-polish": 45,
       "chain-refinish": 90,
       "chain-rhodium": 110,
@@ -163,7 +168,7 @@
     ],
     "necklace": [
       { "id": "solder", "name": "Solder", "priceTable": "solder", "quantityLabel": "Solders" },
-      { "id": "rebuild", "name": "Rebuild", "priceKey": "rebuild-first", "additionalPriceKey": "rebuild-additional", "quantityLabel": "Rebuilds" },
+      { "id": "rebuild", "name": "Rebuild", "materialPriceTable": "rebuild", "quantityLabel": "Rebuilds" },
       { "id": "chain-polish", "name": "Polish", "priceKey": "chain-polish" },
       { "id": "chain-refinish", "name": "Refinish", "priceKey": "chain-refinish" },
       { "id": "chain-rhodium", "name": "Rhodium plating", "priceKey": "chain-rhodium", "excludedGoldColors": ["yellow"] },
