@@ -8,6 +8,33 @@
         ".write": false
       }
     },
+    "activity": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['lastUsedAt', 'loginsLast7Days', 'loginsLast31Days', 'jobBagsInspected'])",
+        "lastUsedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "lastRecordedLogin": {
+          ".validate": "newData.isString()"
+        },
+        "loginsLast7Days": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "loginsLast31Days": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "jobBagsInspected": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "loginEvents": {
+          "$eventId": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          }
+        }
+      }
+    },
     "days": {
       ".read": "auth != null && root.child('members').child(auth.uid).child('active').val() === true && (root.child('members').child(auth.uid).child('role').val() === 'editor' || root.child('members').child(auth.uid).child('role').val() === 'viewer')",
       "$date": {

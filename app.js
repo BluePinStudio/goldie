@@ -85,6 +85,7 @@ let unsubscribeMembership;
 let unsubscribeDay;
 let activeDay = "";
 let toastTimeout;
+let lastActivityWriteAt = 0;
 
 function haptic(duration = 12) {
   if ("vibrate" in navigator) navigator.vibrate(duration);
@@ -695,6 +696,7 @@ function loadLookupJob(date, jobId) {
     elements.lookupDetail.innerHTML = '<p class="lookup-message">This job bag is no longer available. Search again to refresh.</p>';
     return;
   }
+  void recordUserActivity({ inspectedBag: true });
   const tasks = Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {});
   const piece = job.type === "custom"
     ? `Custom · ${job.customItem || ""}`
@@ -729,6 +731,56 @@ function loadLookupJob(date, jobId) {
 
 function showAuthMessage(message) {
   elements.authMessage.textContent = message;
+}
+
+async function recordUserActivity({ loginTime = null, inspectedBag = false } = {}) {
+  const user = currentUser;
+  if (!database || !user) return;
+
+  const now = Date.now();
+  if (!loginTime && !inspectedBag && now - lastActivityWriteAt < 60_000) return;
+  lastActivityWriteAt = now;
+
+  const loginMarker = typeof loginTime === "string" ? loginTime : "";
+  const parsedLoginTime = loginMarker ? Date.parse(loginMarker) : NaN;
+
+  try {
+    const loginEventKey = loginMarker
+      ? firebaseModules.push(firebaseModules.ref(database, `activity/${user.uid}/loginEvents`)).key
+      : null;
+    await firebaseModules.runTransaction(firebaseModules.ref(database, `activity/${user.uid}`), (value) => {
+      const activity = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+      const loginEvents = { ...(activity.loginEvents || {}) };
+      const cutoff31Days = now - 31 * 24 * 60 * 60 * 1000;
+
+      if (loginMarker && activity.lastRecordedLogin !== loginMarker && Number.isFinite(parsedLoginTime)) {
+        const eventTime = Math.min(parsedLoginTime, now);
+        if (eventTime >= cutoff31Days) loginEvents[loginEventKey] = eventTime;
+      }
+
+      for (const [eventKey, timestamp] of Object.entries(loginEvents)) {
+        const eventTime = Number(timestamp);
+        if (!Number.isFinite(eventTime) || eventTime < cutoff31Days || eventTime > now) {
+          delete loginEvents[eventKey];
+        }
+      }
+
+      const loginTimestamps = Object.values(loginEvents).map(Number);
+      const updatedActivity = {
+        ...activity,
+        lastUsedAt: now,
+        loginEvents,
+        loginsLast7Days: loginTimestamps.filter((timestamp) => timestamp >= now - 7 * 24 * 60 * 60 * 1000).length,
+        loginsLast31Days: loginTimestamps.length,
+        jobBagsInspected: Math.max(0, Number(activity.jobBagsInspected) || 0) + (inspectedBag ? 1 : 0),
+      };
+      if (loginMarker) updatedActivity.lastRecordedLogin = loginMarker;
+      return updatedActivity;
+    }, { applyLocally: false });
+  } catch (error) {
+    lastActivityWriteAt = 0;
+    console.error("Could not save user activity:", error);
+  }
 }
 
 function showToday() {
@@ -874,6 +926,7 @@ async function loadSummary() {
 }
 
 function handleAuthState(user) {
+  if (currentUser?.uid !== user?.uid) lastActivityWriteAt = 0;
   unsubscribeMembership?.();
   unsubscribeDay?.();
   unsubscribeMembership = null;
@@ -915,6 +968,7 @@ function handleAuthState(user) {
     if (member?.active === true && ["editor", "viewer"].includes(member.role)) {
       canEdit = member.role === "editor";
       elements.roleBadge.textContent = canEdit ? "Editor" : "View only";
+      void recordUserActivity({ loginTime: user.metadata?.lastSignInTime });
       elements.summaryDate.value = torontoDateKey();
       summaryHasDaySelection = false;
       elements.selectedDayPanel.hidden = true;
@@ -1037,6 +1091,11 @@ elements.jobsTab.addEventListener("click", () => activatePage("jobs"));
 elements.summaryTab.addEventListener("click", () => activatePage("summary"));
 elements.lookupTab.addEventListener("click", () => activatePage("lookup"));
 elements.lookupReference.addEventListener("input", () => searchLookupIndex(elements.lookupReference.value));
+for (const eventType of ["click", "input", "change"]) {
+  elements.appShell.addEventListener(eventType, () => {
+    void recordUserActivity();
+  });
+}
 function changeCalendarMonth(offset) {
   elements.summaryDate.value = shiftMonthDateKey(elements.summaryDate.value, offset);
   summaryHasDaySelection = false;
