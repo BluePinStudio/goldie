@@ -980,7 +980,7 @@ function handleAuthState(user) {
     elements.authScreen.hidden = false;
     elements.authMethods.hidden = false;
     elements.authHeading.textContent = "Log in";
-    elements.authCopy.textContent = "Log in or create an account to access the Journal, Summary, and Lookup.";
+    elements.authCopy.textContent = "Log in or create an account to access the Benchmate 2000 features.";
     showAuthMessage("");
     return;
   }
