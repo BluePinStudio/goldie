@@ -188,78 +188,44 @@
         <section class="summary-view" id="summary-view" aria-labelledby="summary-heading" hidden>
           <div class="summary-page-heading">
             <h1 id="summary-heading">Summary</h1>
-            <label class="date-picker-label" for="summary-date">Day</label>
-            <input class="text-input date-picker" id="summary-date" type="date">
+            <input id="summary-date" type="hidden">
+            <div class="calendar-month-nav" aria-label="Calendar month navigation">
+              <button class="month-nav-button" id="previous-month" type="button" aria-label="Previous month">‹</button>
+              <p class="calendar-month-label" id="calendar-month-label"></p>
+              <button class="month-nav-today" id="today-button" type="button">Today</button>
+              <button class="month-nav-button" id="next-month" type="button" aria-label="Next month">›</button>
+            </div>
           </div>
-          <section class="summary-grid period-stats" aria-label="Selected day summary">
+          <section class="summary-grid period-stats" aria-label="Repair totals">
             <article class="summary-card summary-primary">
-              <div class="summary-top"><span class="summary-label">DAY TOTAL</span><span class="summary-symbol">$</span></div>
+              <div class="summary-top"><span class="summary-label" id="selected-day-total-label">TODAY'S TOTAL</span><span class="summary-symbol">$</span></div>
               <p class="summary-value" id="selected-total">$0</p>
             </article>
             <article class="summary-card">
-              <div class="summary-top"><span class="summary-label">JOB BAGS</span><span class="summary-symbol summary-symbol-muted">▤</span></div>
-              <p class="summary-value" id="selected-count">0</p>
+              <div class="summary-top"><span class="summary-label" id="week-total-label">WEEK TO DATE</span></div>
+              <p class="summary-value" id="week-total">$0</p>
             </article>
             <article class="summary-card">
-              <div class="summary-top"><span class="summary-label">AVERAGE PER BAG</span><span class="summary-symbol summary-symbol-muted">↗</span></div>
-              <p class="summary-value" id="selected-average">$0</p>
+              <div class="summary-top"><span class="summary-label" id="month-total-label">MONTH TO DATE</span></div>
+              <p class="summary-value" id="month-total">$0</p>
             </article>
           </section>
-          <section class="period-insights" aria-label="Weekly and monthly repair value">
-            <section class="period-insight" aria-labelledby="week-insight-heading">
-              <h2 id="week-insight-heading">Week</h2>
-              <div class="summary-grid period-metrics">
-                <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label" id="week-total-label">WEEK TOTAL</span></div>
-                  <p class="summary-value" id="week-total">$0</p>
-                </article>
-                <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label">AVERAGE PER WORKDAY</span></div>
-                  <p class="summary-value" id="week-average">$0</p>
-                </article>
-                <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label" id="week-change-label">VS. PREVIOUS WEEK</span></div>
-                  <p class="summary-value change-value" id="week-change">—</p>
-                </article>
-              </div>
-            </section>
-            <section class="period-insight" aria-labelledby="month-insight-heading">
-              <h2 id="month-insight-heading">Month</h2>
-              <div class="summary-grid period-metrics">
-                <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label" id="month-total-label">MONTH TOTAL</span></div>
-                  <p class="summary-value" id="month-total">$0</p>
-                </article>
-                <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label">AVERAGE PER WORKDAY</span></div>
-                  <p class="summary-value" id="month-average">$0</p>
-                </article>
-                <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label" id="month-change-label">VS. PREVIOUS MONTH</span></div>
-                  <p class="summary-value change-value" id="month-change">—</p>
-                </article>
-              </div>
-            </section>
-          </section>
-          <section class="panel chart-panel" aria-labelledby="chart-heading">
-            <div class="panel-heading chart-heading">
+          <section class="panel calendar-panel" aria-labelledby="calendar-heading">
+            <div class="panel-heading calendar-heading">
               <div>
-                <h2 id="chart-heading">Repair value</h2>
-                <p class="chart-caption" id="chart-caption"></p>
-              </div>
-              <div class="chart-toggle" role="group" aria-label="Chart range">
-                <button class="chart-range is-active" id="week-range" type="button" aria-pressed="true">Week</button>
-                <button class="chart-range" id="month-range" type="button" aria-pressed="false">Month</button>
+                <h2 id="calendar-heading">Repair calendar</h2>
+                <p class="calendar-caption">Select a day to view its job bags.</p>
               </div>
             </div>
-            <div class="chart-scroll" id="chart-scroll">
-              <div class="sales-chart" id="sales-chart" role="group" aria-label="Job totals by day"></div>
+            <div class="calendar-grid calendar-weekdays" aria-hidden="true">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
             </div>
+            <div class="calendar-grid" id="calendar-grid" role="group" aria-label="Job totals by day"></div>
           </section>
-          <section class="panel day-summary-panel" aria-labelledby="selected-day-heading">
-            <div class="panel-heading bags-heading">
+          <section class="panel day-summary-panel" id="selected-day-panel" aria-labelledby="selected-day-heading" hidden>
+            <div class="panel-heading day-summary-heading">
               <div>
-                <h2 id="selected-day-heading">Selected day</h2>
+                <h2 id="selected-day-heading">Job bags</h2>
                 <time class="bags-date" id="selected-day-date"></time>
               </div>
             </div>
@@ -279,7 +245,7 @@
                 <input class="text-input" id="lookup-reference" type="search" maxlength="60" placeholder="Search by reference number" autocomplete="off">
               </div>
             </div>
-            <p class="lookup-message" id="lookup-message" aria-live="polite">Enter a reference to search job bags.</p>
+            <p class="lookup-message" id="lookup-message" aria-live="polite">Enter a reference number to search job bags.</p>
             <div class="lookup-results" id="lookup-results"></div>
           </section>
           <section class="panel lookup-detail-panel" id="lookup-detail-panel" aria-live="polite" hidden>

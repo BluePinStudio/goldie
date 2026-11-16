@@ -24,27 +24,20 @@ const elements = {
   lookupDetail: document.querySelector("#lookup-detail"),
   roleBadge: document.querySelector("#role-badge"),
   summaryDate: document.querySelector("#summary-date"),
+  calendarMonthLabel: document.querySelector("#calendar-month-label"),
+  calendarGrid: document.querySelector("#calendar-grid"),
+  previousMonth: document.querySelector("#previous-month"),
+  nextMonth: document.querySelector("#next-month"),
+  todayButton: document.querySelector("#today-button"),
+  selectedDayTotalLabel: document.querySelector("#selected-day-total-label"),
   selectedTotal: document.querySelector("#selected-total"),
-  selectedCount: document.querySelector("#selected-count"),
-  selectedAverage: document.querySelector("#selected-average"),
+  selectedDayPanel: document.querySelector("#selected-day-panel"),
   selectedDayDate: document.querySelector("#selected-day-date"),
   selectedDayList: document.querySelector("#selected-day-list"),
   selectedDayEmpty: document.querySelector("#selected-day-empty"),
-  weekTotalLabel: document.querySelector("#week-total-label"),
   weekTotal: document.querySelector("#week-total"),
-  weekAverage: document.querySelector("#week-average"),
-  weekChange: document.querySelector("#week-change"),
-  weekChangeLabel: document.querySelector("#week-change-label"),
-  monthTotalLabel: document.querySelector("#month-total-label"),
   monthTotal: document.querySelector("#month-total"),
-  monthAverage: document.querySelector("#month-average"),
-  monthChange: document.querySelector("#month-change"),
-  monthChangeLabel: document.querySelector("#month-change-label"),
   summaryError: document.querySelector("#summary-error"),
-  weekRange: document.querySelector("#week-range"),
-  monthRange: document.querySelector("#month-range"),
-  chartCaption: document.querySelector("#chart-caption"),
-  salesChart: document.querySelector("#sales-chart"),
   bagsDate: document.querySelector("#bags-date"),
   form: document.querySelector("#job-form"),
   reference: document.querySelector("#job-reference"),
@@ -83,7 +76,7 @@ let catalog;
 let jobs = [];
 let currentUser = null;
 let canEdit = false;
-let summaryRange = "week";
+let summaryHasDaySelection = false;
 let summaryRequest = 0;
 let lookupRequest = 0;
 let lookupIndex = {};
@@ -155,13 +148,13 @@ function calendarMonthDates(dateKey) {
   return Array.from({ length: dayCount }, (_, index) => `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`);
 }
 
-function previousCalendarMonthDates(dateKey) {
-  const [year, month] = dateKey.split("-").map(Number);
-  const previousMonth = new Date(Date.UTC(year, month - 2, 1));
-  const previousYear = previousMonth.getUTCFullYear();
-  const previousMonthNumber = previousMonth.getUTCMonth() + 1;
-  const dayCount = new Date(Date.UTC(previousYear, previousMonthNumber, 0)).getUTCDate();
-  return Array.from({ length: dayCount }, (_, index) => `${previousYear}-${String(previousMonthNumber).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`);
+function shiftMonthDateKey(dateKey, offset) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const targetMonth = new Date(Date.UTC(year, month - 1 + offset, 1));
+  const targetYear = targetMonth.getUTCFullYear();
+  const targetMonthNumber = targetMonth.getUTCMonth() + 1;
+  const targetDay = Math.min(day, new Date(Date.UTC(targetYear, targetMonthNumber, 0)).getUTCDate());
+  return `${targetYear}-${String(targetMonthNumber).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
 }
 
 function formatDay(dateKey) {
@@ -179,14 +172,22 @@ function roundToNearestFive(amount) {
   return Math.round(amount / 5) * 5;
 }
 
-function money(amount) {
+function formatCurrency(amount, options = {}) {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: elements.currencySelect.value,
     currencyDisplay: "narrowSymbol",
+    ...options,
+  }).formatToParts(amount)
+    .map((part) => part.type === "currency" ? "$" : part.value)
+    .join("");
+}
+
+function money(amount) {
+  return formatCurrency(amount, {
     minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  });
 }
 
 function taskRates(type, task) {
@@ -783,141 +784,92 @@ function activatePage(page) {
 }
 
 function renderSelectedDay(dayKey, dayBags) {
-  const total = dayBags.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
-  elements.selectedTotal.textContent = money(total);
-  elements.selectedCount.textContent = String(dayBags.length);
-  elements.selectedAverage.textContent = money(dayBags.length ? total / dayBags.length : 0);
   elements.selectedDayDate.dateTime = dayKey;
   elements.selectedDayDate.textContent = formatDay(dayKey);
   elements.selectedDayList.innerHTML = dayBags.map((job) => renderBagCard(job, false)).join("");
   elements.selectedDayEmpty.hidden = dayBags.length > 0;
+  elements.selectedDayPanel.hidden = false;
 }
 
 function compactMoney(amount) {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: elements.currencySelect.value,
-    currencyDisplay: "narrowSymbol",
+  return formatCurrency(amount, {
     notation: "compact",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 1,
-  }).format(amount);
+  });
 }
 
-function renderSalesChart(dateKeys, bagsByDate) {
-  const totals = dateKeys.map((date) => {
+function totalForDates(dateKeys, bagsByDate) {
+  return dateKeys.reduce((sum, date) => {
     const bags = bagsByDate.get(date) || [];
-    return {
-      date,
-      bags: bags.length,
-      total: bags.reduce((sum, job) => sum + (Number(job.total) || 0), 0),
-    };
-  });
-  const maxTotal = Math.max(1, ...totals.map((entry) => entry.total));
-  elements.salesChart.style.minWidth = `${Math.max(440, totals.length * 52)}px`;
-  elements.salesChart.innerHTML = totals.map((entry) => {
-    const date = new Date(`${entry.date}T12:00:00Z`);
-    const dayLabel = summaryRange === "week"
-      ? new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" }).format(date)
-      : String(date.getUTCDate());
-    const height = entry.total ? Math.max(4, entry.total / maxTotal * 100) : 0;
-    return `
-      <button class="chart-column" type="button" data-chart-date="${entry.date}" title="${formatDay(entry.date)} · ${money(entry.total)} · ${entry.bags} bags" aria-label="${formatDay(entry.date)}: ${money(entry.total)}, ${entry.bags} bags">
-        <span class="chart-value">${compactMoney(entry.total)}</span>
-        <span class="chart-bar" style="--bar-height:${height}%"></span>
-        <span class="chart-date">${dayLabel}</span>
-      </button>
-    `;
-  }).join("");
-  elements.salesChart.querySelectorAll("[data-chart-date]").forEach((button) => {
+    return sum + bags.reduce((bagSum, job) => bagSum + (Number(job.total) || 0), 0);
+  }, 0);
+}
+
+function renderCalendar(monthDates, selectedDate, bagsByDate) {
+  const firstDay = new Date(`${monthDates[0]}T12:00:00Z`).getUTCDay();
+  const monthDate = new Date(`${selectedDate}T12:00:00Z`);
+  const today = torontoDateKey();
+  elements.calendarMonthLabel.textContent = new Intl.DateTimeFormat(undefined, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(monthDate);
+  elements.calendarGrid.innerHTML = [
+    ...Array.from({ length: firstDay }, () => '<span class="calendar-day-spacer" aria-hidden="true"></span>'),
+    ...monthDates.map((dateKey) => {
+      const bags = bagsByDate.get(dateKey) || [];
+      const total = bags.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
+      const date = new Date(`${dateKey}T12:00:00Z`);
+      const dayNumber = date.getUTCDate();
+      const bagLabel = bags.length === 1 ? "1 job bag" : `${bags.length} job bags`;
+      const classes = [
+        "calendar-day",
+        dateKey === selectedDate ? "is-selected" : "",
+        dateKey === today ? "is-today" : "",
+      ].filter(Boolean).join(" ");
+      const detail = bags.length ? `${compactMoney(total)} · ${bagLabel}` : "";
+      return `
+        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}: ${money(total)}, ${bagLabel}">
+          <span class="calendar-day-number">${dayNumber}</span>
+          <span class="calendar-day-total">${detail}</span>
+        </button>
+      `;
+    }),
+  ].join("");
+
+  elements.calendarGrid.querySelectorAll("[data-calendar-date]").forEach((button) => {
     button.addEventListener("click", () => {
-      elements.summaryDate.value = button.dataset.chartDate;
-      loadSummary();
+      const dateKey = button.dataset.calendarDate;
+      elements.summaryDate.value = dateKey;
+      summaryHasDaySelection = true;
+      renderCalendar(monthDates, dateKey, bagsByDate);
+      renderSummaryTotals(dateKey, bagsByDate);
+      renderSelectedDay(dateKey, bagsByDate.get(dateKey) || []);
     });
   });
 }
 
-function reportPeriodDates(periodDates, today) {
-  const first = periodDates[0];
-  const last = periodDates[periodDates.length - 1];
-  if (!first || first > today) return { dates: [], toDate: true };
-  if (last >= today) {
-    return {
-      dates: periodDates.filter((date) => date <= today),
-      toDate: true,
-    };
-  }
-  return { dates: periodDates, toDate: false };
-}
-
-function periodMetrics(dateKeys, bagsByDate) {
-  const total = dateKeys.reduce((sum, date) => {
-    const bags = bagsByDate.get(date) || [];
-    return sum + bags.reduce((bagSum, job) => bagSum + (Number(job.total) || 0), 0);
-  }, 0);
-  const loggedDays = dateKeys.filter((date) => (bagsByDate.get(date) || []).length > 0).length;
-  return {
-    total,
-    average: loggedDays ? total / loggedDays : 0,
-  };
-}
-
-function formatPeriodChange(currentTotal, previousTotal) {
-  if (previousTotal === 0) return currentTotal === 0 ? "0%" : "New";
-  const change = ((currentTotal - previousTotal) / previousTotal) * 100;
-  const prefix = change > 0 ? "+" : "";
-  return `${prefix}${change.toFixed(1)}%`;
-}
-
-function renderPeriodMetrics(type, currentDates, previousDates, bagsByDate, toDate) {
-  const current = periodMetrics(currentDates, bagsByDate);
-  const previous = periodMetrics(previousDates, bagsByDate);
-  const isWeek = type === "week";
-  const label = isWeek ? "WEEK" : "MONTH";
-  const totalElement = isWeek ? elements.weekTotal : elements.monthTotal;
-  const averageElement = isWeek ? elements.weekAverage : elements.monthAverage;
-  const changeElement = isWeek ? elements.weekChange : elements.monthChange;
-  const totalLabelElement = isWeek ? elements.weekTotalLabel : elements.monthTotalLabel;
-  const changeLabelElement = isWeek ? elements.weekChangeLabel : elements.monthChangeLabel;
-
-  totalLabelElement.textContent = `${label} ${toDate ? "TO DATE" : "TOTAL"}`;
-  changeLabelElement.textContent = `VS. PREVIOUS ${label}${toDate ? " TO DATE" : ""}`;
-  totalElement.textContent = money(current.total);
-  averageElement.textContent = money(current.average);
-  changeElement.textContent = formatPeriodChange(current.total, previous.total);
-  changeElement.classList.toggle("change-positive", current.total > previous.total);
-  changeElement.classList.toggle("change-negative", current.total < previous.total);
-  changeElement.title = `${money(current.total)} compared with ${money(previous.total)} in the previous ${label.toLowerCase()}`;
+function renderSummaryTotals(selectedDate, bagsByDate) {
+  const dayTotal = totalForDates([selectedDate], bagsByDate);
+  const weekToDate = calendarWeekDates(selectedDate).filter((date) => date <= selectedDate);
+  const monthToDate = calendarMonthDates(selectedDate).filter((date) => date <= selectedDate);
+  elements.selectedDayTotalLabel.textContent = selectedDate === torontoDateKey() ? "TODAY'S TOTAL" : "DAY TOTAL";
+  elements.selectedTotal.textContent = money(dayTotal);
+  elements.weekTotal.textContent = money(totalForDates(weekToDate, bagsByDate));
+  elements.monthTotal.textContent = money(totalForDates(monthToDate, bagsByDate));
 }
 
 async function loadSummary() {
   if (!database || !currentUser || !elements.summaryDate.value) return;
   const request = ++summaryRequest;
   const selectedDate = elements.summaryDate.value;
-  const today = torontoDateKey();
-  const weekDates = calendarWeekDates(selectedDate);
   const monthDates = calendarMonthDates(selectedDate);
-  const weekReport = reportPeriodDates(weekDates, today);
-  const monthReport = reportPeriodDates(monthDates, today);
-  const previousWeekDates = weekReport.dates.map((date) => shiftDateKey(date, -7));
-  const monthEnd = monthReport.dates[monthReport.dates.length - 1];
-  const monthCutoffDay = monthEnd ? Number(monthEnd.slice(-2)) : 0;
-  const previousMonthDates = previousCalendarMonthDates(selectedDate);
-  const priorMonthBoundedDates = monthReport.toDate
-    ? previousMonthDates.filter((date) => Number(date.slice(-2)) <= monthCutoffDay)
-    : previousMonthDates;
-  const chartDates = summaryRange === "week" ? weekDates : monthDates;
-  const dateKeys = [...new Set([
-    selectedDate,
-    ...chartDates,
-    ...weekReport.dates,
-    ...previousWeekDates,
-    ...monthReport.dates,
-    ...priorMonthBoundedDates,
-  ])];
+  const weekToDate = calendarWeekDates(selectedDate).filter((date) => date <= selectedDate);
+  const dateKeys = [...new Set([...monthDates, ...weekToDate])];
   elements.summaryError.hidden = true;
-  elements.selectedDayList.innerHTML = '<p class="loading-message">Loading day summary…</p>';
-  elements.selectedDayEmpty.hidden = true;
-  elements.salesChart.innerHTML = "";
+  elements.calendarGrid.innerHTML = '<p class="loading-message">Loading calendar…</p>';
+  if (!summaryHasDaySelection) elements.selectedDayPanel.hidden = true;
 
   try {
     const entries = await Promise.all(dateKeys.map(async (date) => {
@@ -926,30 +878,18 @@ async function loadSummary() {
     }));
     if (request !== summaryRequest) return;
     const bagsByDate = new Map(entries);
-    renderSelectedDay(selectedDate, bagsByDate.get(selectedDate) || []);
-    renderSalesChart(chartDates, bagsByDate);
-    renderPeriodMetrics("week", weekReport.dates, previousWeekDates, bagsByDate, weekReport.toDate && weekReport.dates.length < weekDates.length);
-    renderPeriodMetrics("month", monthReport.dates, priorMonthBoundedDates, bagsByDate, monthReport.toDate);
-
-    if (summaryRange === "week") {
-      const first = chartDates[0];
-      const last = chartDates[chartDates.length - 1];
-      elements.chartCaption.textContent = `${formatDay(first)} – ${formatDay(last)}`;
-    } else {
-      const date = new Date(`${selectedDate}T12:00:00Z`);
-      elements.chartCaption.textContent = new Intl.DateTimeFormat(undefined, {
-        month: "long",
-        year: "numeric",
-        timeZone: "UTC",
-      }).format(date);
-    }
+    renderCalendar(monthDates, selectedDate, bagsByDate);
+    renderSummaryTotals(selectedDate, bagsByDate);
+    if (summaryHasDaySelection) renderSelectedDay(selectedDate, bagsByDate.get(selectedDate) || []);
   } catch (error) {
     if (request !== summaryRequest) return;
     console.error("Could not load the summary:", error);
     elements.summaryError.textContent = "Could not load summary data. Check the database read rules and your connection.";
     elements.summaryError.hidden = false;
+    elements.calendarGrid.innerHTML = "";
     elements.selectedDayList.innerHTML = "";
     elements.selectedDayEmpty.hidden = true;
+    elements.selectedDayPanel.hidden = true;
   }
 }
 
@@ -996,6 +936,8 @@ function handleAuthState(user) {
       canEdit = member.role === "editor";
       elements.roleBadge.textContent = canEdit ? "Editor" : "View only";
       elements.summaryDate.value = torontoDateKey();
+      summaryHasDaySelection = false;
+      elements.selectedDayPanel.hidden = true;
       elements.jobsTab.hidden = !canEdit;
       elements.summaryTab.hidden = false;
       elements.lookupTab.hidden = false;
@@ -1115,21 +1057,19 @@ elements.jobsTab.addEventListener("click", () => activatePage("jobs"));
 elements.summaryTab.addEventListener("click", () => activatePage("summary"));
 elements.lookupTab.addEventListener("click", () => activatePage("lookup"));
 elements.lookupReference.addEventListener("input", () => searchLookupIndex(elements.lookupReference.value));
-elements.summaryDate.addEventListener("change", loadSummary);
-elements.weekRange.addEventListener("click", () => {
-  summaryRange = "week";
-  elements.weekRange.classList.add("is-active");
-  elements.weekRange.setAttribute("aria-pressed", "true");
-  elements.monthRange.classList.remove("is-active");
-  elements.monthRange.setAttribute("aria-pressed", "false");
+function changeCalendarMonth(offset) {
+  elements.summaryDate.value = shiftMonthDateKey(elements.summaryDate.value, offset);
+  summaryHasDaySelection = false;
+  elements.selectedDayPanel.hidden = true;
   loadSummary();
-});
-elements.monthRange.addEventListener("click", () => {
-  summaryRange = "month";
-  elements.monthRange.classList.add("is-active");
-  elements.monthRange.setAttribute("aria-pressed", "true");
-  elements.weekRange.classList.remove("is-active");
-  elements.weekRange.setAttribute("aria-pressed", "false");
+}
+
+elements.previousMonth.addEventListener("click", () => changeCalendarMonth(-1));
+elements.nextMonth.addEventListener("click", () => changeCalendarMonth(1));
+elements.todayButton.addEventListener("click", () => {
+  elements.summaryDate.value = torontoDateKey();
+  summaryHasDaySelection = false;
+  elements.selectedDayPanel.hidden = true;
   loadSummary();
 });
 
@@ -1147,7 +1087,7 @@ elements.form.addEventListener("submit", async (event) => {
   elements.reference.setCustomValidity("");
   const selection = getSelection();
   if (selection.type === "custom" && (!selection.customItem || !Number.isFinite(selection.customPrice) || selection.total < 5)) {
-    showError("Enter the custom item and a price that rounds to at least $5.");
+    showError("Enter a custom item and a price that rounds to at least $5.");
     return;
   }
   if (selection.type !== "custom" && selection.tasks.length === 0) {
@@ -1159,13 +1099,13 @@ elements.form.addEventListener("submit", async (event) => {
       || !Number.isFinite(Number(elements.otherWorkPrice.value))
       || Number(elements.otherWorkPrice.value) <= 0
       || roundToNearestFive(Number(elements.otherWorkPrice.value)) < 5)) {
-    showError("Enter an Other job description and a price that rounds to at least $5.");
+    showError("Enter a description and price for Other work. The price must round to at least $5.");
     return;
   }
   if (selection.tasks.some((task) => task.characterFactor
       ? !Number.isInteger(task.quantity) || task.quantity < 1 || task.quantity > 200
     : task.quantityLabel && (!Number.isInteger(task.quantity) || task.quantity < 1 || task.quantity > 99))) {
-    showError("Enter engraving in 1–200 characters and other quantities as whole numbers from 1 to 99.");
+    showError("Enter engraving as a whole number from 1 to 200 characters. Enter other quantities as whole numbers from 1 to 99.");
     return;
   }
   showError("");
