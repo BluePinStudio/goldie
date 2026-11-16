@@ -6,6 +6,7 @@ const elements = {
   authCopy: document.querySelector("#auth-copy"),
   authMessage: document.querySelector("#auth-message"),
   googleSignIn: document.querySelector("#google-sign-in"),
+  currencySelect: document.querySelector("#currency-select"),
   appShell: document.querySelector("#app-shell"),
   accountBar: document.querySelector("#account-bar"),
   accountName: document.querySelector("#account-name"),
@@ -181,7 +182,8 @@ function roundToNearestFive(amount) {
 function money(amount) {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: catalog.currency,
+    currency: elements.currencySelect.value,
+    currencyDisplay: "narrowSymbol",
     minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(amount);
@@ -209,6 +211,23 @@ function taskRates(type, task) {
     additional: task.additionalPriceKey ? rates[task.additionalPriceKey] : null,
     setup: task.setupPriceKey ? rates[task.setupPriceKey] : 0,
   };
+}
+
+function taskPriceDescription(task, rates) {
+  if (!rates) return "";
+  if (task.characterFactor) return `${money(rates.setup)} setup fee + ${money(rates.unit)} per character`;
+  if (task.priceTable && rates.additional === null) return money(rates.unit);
+  if (rates.additional !== null) {
+    const unit = task.quantityLabel?.toLowerCase().replace(/s$/, "");
+    return unit
+      ? `${money(rates.unit)} for the first ${unit}; ${money(rates.additional)} for each additional ${unit}`
+      : `${money(rates.unit)} for the first; ${money(rates.additional)} for each additional`;
+  }
+  if (task.quantityLabel) {
+    const unit = task.quantityLabel.toLowerCase().replace(/s$/, "");
+    return `${money(rates.unit)} per ${unit}`;
+  }
+  return money(rates.unit);
 }
 
 function escapeHtml(value) {
@@ -296,7 +315,7 @@ function updateItemType() {
     updateEstimate();
     return;
   }
-  elements.taskHint.textContent = type === "necklace" ? "Select repairs · extra work is discounted" : "Select all that apply";
+  elements.taskHint.textContent = "Select all applicable repairs";
   elements.taskList.innerHTML = catalog.tasks[type].map((task) => {
     const rates = taskRates(type, task);
     const quantity = task.characterFactor
@@ -304,17 +323,7 @@ function updateItemType() {
       : task.quantityLabel
         ? `<span class="quantity-control"><input type="number" min="1" max="99" step="1" value="1" name="quantity-${escapeHtml(task.id)}" aria-label="${escapeHtml(task.quantityLabel)} quantity" disabled><span>${escapeHtml(task.quantityLabel.toLowerCase())}</span></span>`
       : "";
-    const priceDescription = !rates
-      ? ""
-      : task.characterFactor
-        ? `${money(rates.setup)} setup + ${money(rates.unit)} / character`
-      : task.priceTable && rates.additional === null
-        ? money(rates.unit)
-      : rates.additional !== null
-        ? `${money(rates.unit)} first · ${money(rates.additional)} each more`
-        : task.quantityLabel
-          ? `${money(rates.unit)} / ${escapeHtml(task.quantityLabel.toLowerCase().replace(/s$/, ""))}`
-          : money(rates.unit);
+    const priceDescription = escapeHtml(taskPriceDescription(task, rates));
     return `
       <div class="task-option"${!rates || task.eligibleMaterials && !task.eligibleMaterials.includes(elements.material.value) ? " hidden" : ""}>
         <input class="task-input" type="checkbox" id="task-${escapeHtml(task.id)}" name="tasks" value="${escapeHtml(task.id)}">
@@ -330,7 +339,7 @@ function updateItemType() {
   elements.taskFootnote.textContent = type === "ring"
     ? ""
     : type === "necklace"
-      ? "Replacement clasps and bails priced separately."
+      ? "Replacement clasps and bails are priced separately."
       : "";
   for (const input of elements.taskList.querySelectorAll(".task-input")) {
     input.addEventListener("change", () => {
@@ -372,6 +381,7 @@ function updateConditionalTaskVisibility() {
     const selected = new Set([...elements.taskList.querySelectorAll(".task-input:checked")].map((input) => input.value));
     const resizingSelected = selected.has("resize-up") || selected.has("resize-down");
     const shankSelected = selected.has("full-shank") || selected.has("quarter-shank");
+    const refinishSelected = selected.has("refinish") || selected.has("refinish-rhodium");
     const hiddenTasks = new Set();
     if (resizingSelected) {
       hiddenTasks.add(selected.has("resize-up") ? "resize-down" : "resize-up");
@@ -380,6 +390,13 @@ function updateConditionalTaskVisibility() {
       for (const id of ["resize-up", "resize-down", "refinish", "refinish-rhodium"]) hiddenTasks.add(id);
       if (selected.has("full-shank")) hiddenTasks.add("quarter-shank");
       if (selected.has("quarter-shank")) hiddenTasks.add("full-shank");
+    }
+    if (selected.has("refinish")) hiddenTasks.add("refinish-rhodium");
+    if (selected.has("refinish-rhodium")) hiddenTasks.add("refinish");
+    if (refinishSelected) hiddenTasks.add("quick-polish");
+    if (selected.has("quick-polish")) {
+      hiddenTasks.add("refinish");
+      hiddenTasks.add("refinish-rhodium");
     }
     for (const id of hiddenTasks) {
       const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(id)}`);
@@ -419,15 +436,7 @@ function updateTaskPriceLabels() {
       priceElement.textContent = "";
       continue;
     }
-    priceElement.textContent = task.characterFactor
-        ? `${money(rates.setup)} setup + ${money(rates.unit)} / character`
-      : task.priceTable && rates.additional === null
-        ? money(rates.unit)
-      : rates.additional !== null
-        ? `${money(rates.unit)} first · ${money(rates.additional)} each more`
-        : task.quantityLabel
-          ? `${money(rates.unit)} / ${task.quantityLabel.toLowerCase().replace(/s$/, "")}`
-          : money(rates.unit);
+    priceElement.textContent = taskPriceDescription(task, rates);
   }
 }
 
@@ -531,17 +540,17 @@ function renderBagCard(job, removable) {
   }).join("");
   const descriptors = job.type === "custom"
     ? ["Custom", job.customItem]
-    : [job.type === "chain" ? "necklace" : job.type, formatJobMaterial(job), job.widthName];
+    : [job.type === "chain" ? "Necklace" : `${job.type[0].toUpperCase()}${job.type.slice(1)}`, formatJobMaterial(job), job.widthName];
   return `
     <article class="bag-card">
       <div class="bag-topline">
         <div class="bag-title-wrap">
-          <p class="bag-reference">${escapeHtml(job.reference || (job.noJobBag ? "No job bag" : job.customItem || "Untitled job bag"))}</p>
+          <p class="bag-reference">${escapeHtml(job.reference || (job.noJobBag ? "No job bag number" : job.customItem || "Untitled job bag"))}</p>
           <p class="bag-subtitle">${escapeHtml(descriptors.filter(Boolean).join(" · "))}</p>
         </div>
         <div class="bag-price-wrap">
           <strong class="bag-price">${money(job.total)}</strong>
-          ${removable ? `<button class="remove-button" type="button" data-remove="${escapeHtml(job.id)}" aria-label="Remove ${escapeHtml(job.reference || "job bag")}">×</button>` : ""}
+          ${removable ? `          <button class="remove-button" type="button" data-remove="${escapeHtml(job.id)}" aria-label="Remove ${escapeHtml(job.reference || "job bag")}">×</button>` : ""}
         </div>
       </div>
       <div class="bag-details">${taskChips}</div>
@@ -613,7 +622,7 @@ function searchLookupIndex(query) {
   const normalized = normalizeReference(query);
   if (!normalized) {
     elements.lookupResults.innerHTML = "";
-    elements.lookupMessage.textContent = "Enter a reference to search job bags.";
+    elements.lookupMessage.textContent = "Enter a reference number to search job bags.";
     elements.lookupMessage.hidden = false;
     return;
   }
@@ -680,7 +689,7 @@ async function loadLookupData() {
     console.error("Could not load job bags for lookup:", error);
     elements.lookupResults.innerHTML = "";
     elements.lookupMessage.hidden = false;
-    elements.lookupMessage.textContent = "Could not load job bags. Check the database rules and connection.";
+    elements.lookupMessage.textContent = "Could not load job bags. Check the database rules and your connection.";
   }
 }
 
@@ -703,7 +712,7 @@ function loadLookupJob(date, jobId) {
   const tasks = Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {});
   const piece = job.type === "custom"
     ? `Custom · ${job.customItem || ""}`
-    : [job.type, formatJobMaterial(job), job.widthName].filter(Boolean).join(" · ");
+    : [job.type === "chain" ? "Necklace" : `${job.type[0].toUpperCase()}${job.type.slice(1)}`, formatJobMaterial(job), job.widthName].filter(Boolean).join(" · ");
   elements.lookupDetail.innerHTML = `
       <div class="lookup-detail-heading">
         <div>
@@ -752,7 +761,7 @@ function showToday() {
     render();
   }, (error) => {
     console.error("Could not load today's job bags:", error);
-    elements.bagList.innerHTML = '<p class="catalog-error">Could not load today’s job bags. Check the Realtime Database rules and connection.</p>';
+    elements.bagList.innerHTML = '<p class="catalog-error">Could not load today’s job bags. Check the database rules and your connection.</p>';
   });
 }
 
@@ -787,7 +796,8 @@ function renderSelectedDay(dayKey, dayBags) {
 function compactMoney(amount) {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: catalog.currency,
+    currency: elements.currencySelect.value,
+    currencyDisplay: "narrowSymbol",
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(amount);
@@ -870,7 +880,7 @@ function renderPeriodMetrics(type, currentDates, previousDates, bagsByDate, toDa
   const changeLabelElement = isWeek ? elements.weekChangeLabel : elements.monthChangeLabel;
 
   totalLabelElement.textContent = `${label} ${toDate ? "TO DATE" : "TOTAL"}`;
-  changeLabelElement.textContent = `VS PREV. ${label}${toDate ? " TO DATE" : ""}`;
+  changeLabelElement.textContent = `VS. PREVIOUS ${label}${toDate ? " TO DATE" : ""}`;
   totalElement.textContent = money(current.total);
   averageElement.textContent = money(current.average);
   changeElement.textContent = formatPeriodChange(current.total, previous.total);
@@ -936,7 +946,7 @@ async function loadSummary() {
   } catch (error) {
     if (request !== summaryRequest) return;
     console.error("Could not load the summary:", error);
-    elements.summaryError.textContent = "Could not load summary data. Check your Realtime Database read rules and connection.";
+    elements.summaryError.textContent = "Could not load summary data. Check the database read rules and your connection.";
     elements.summaryError.hidden = false;
     elements.selectedDayList.innerHTML = "";
     elements.selectedDayEmpty.hidden = true;
@@ -1019,7 +1029,7 @@ function handleAuthState(user) {
     elements.googleSignIn.hidden = true;
     elements.authHeading.textContent = member?.active === true ? "Role not configured" : "Access not enabled";
     elements.authCopy.textContent = member?.active === true
-      ? "Ask an administrator to set this account's role to editor or viewer."
+      ? "Ask an administrator to assign this account the Editor or Viewer role."
       : "Ask an administrator to approve this Google account.";
     showAuthMessage(`Firebase user ID: ${user.uid}`);
   }, (error) => {
@@ -1038,7 +1048,7 @@ function handleAuthState(user) {
     elements.authScreen.hidden = false;
     elements.googleSignIn.hidden = true;
     elements.authHeading.textContent = "Could not check access";
-    elements.authCopy.textContent = "Check your Realtime Database rules and connection.";
+    elements.authCopy.textContent = "Check the database rules and your connection.";
     showAuthMessage(`Firebase user ID: ${user.uid}`);
   });
 }
@@ -1054,7 +1064,7 @@ async function removeJob(job) {
     showToast("Job bag marked as deleted.");
   } catch (error) {
     console.error("Could not mark the job bag as deleted:", error);
-    showToast("Could not update the job bag. Check database access.");
+    showToast("Could not update the job bag. Check your database access.");
   }
 }
 

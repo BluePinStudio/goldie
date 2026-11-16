@@ -14,9 +14,20 @@
         <h1 class="brand">
           <span>Benchmate2000</span>
         </h1>
-        <div class="account-bar" id="account-bar" hidden>
-          <span class="account-name" id="account-name"></span>
-          <button class="text-button" id="sign-out" type="button">Sign out</button>
+        <div class="topbar-actions">
+          <label class="currency-selector" for="currency-select">
+            <span>Currency</span>
+            <div class="select-wrap">
+              <select class="text-input" id="currency-select" aria-label="Currency">
+                <option value="CAD">$CA</option>
+              </select>
+              <span class="select-chevron" aria-hidden="true">⌄</span>
+            </div>
+          </label>
+          <div class="account-bar" id="account-bar" hidden>
+            <span class="account-name" id="account-name"></span>
+            <button class="text-button" id="sign-out" type="button">Sign out</button>
+          </div>
         </div>
       </header>
 
@@ -50,7 +61,7 @@
             <p class="summary-value" id="bag-count">0</p>
           </article>
           <article class="summary-card">
-            <div class="summary-top"><span class="summary-label">AVERAGE / BAG</span><span class="summary-symbol summary-symbol-muted">↗</span></div>
+            <div class="summary-top"><span class="summary-label">AVERAGE PER BAG</span><span class="summary-symbol summary-symbol-muted">↗</span></div>
             <p class="summary-value" id="average-value">$0.00</p>
           </article>
         </section>
@@ -64,11 +75,11 @@
             </div>
             <form id="job-form">
               <div class="field reference-field">
-                <label class="field-label" for="job-reference">Reference #</label>
+                <label class="field-label" for="job-reference">Reference number</label>
                 <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 160893" autocomplete="off" required />
                 <label class="no-job-bag-option" for="no-job-bag">
                   <input id="no-job-bag" name="no-job-bag" type="checkbox">
-                  <span>No job bag</span>
+                  <span>No job bag number</span>
                 </label>
               </div>
 
@@ -103,7 +114,7 @@
                   <input class="text-input" id="custom-item" name="custom-item" type="text" maxlength="80" placeholder="Describe the item" autocomplete="off" />
                 </div>
                 <div class="field custom-price-field">
-                  <label class="field-label" for="custom-price">Price (CAD)</label>
+                  <label class="field-label" for="custom-price">Price</label>
                   <input class="text-input" id="custom-price" name="custom-price" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="0.00" />
                 </div>
               </div>
@@ -133,7 +144,7 @@
                       <input class="text-input" id="other-work-name" name="other-work-name" type="text" maxlength="80" placeholder="Describe the job" autocomplete="off">
                     </div>
                     <div class="field">
-                      <label class="field-label" for="other-work-price">Price (CAD)</label>
+                      <label class="field-label" for="other-work-price">Price</label>
                       <input class="text-input" id="other-work-price" name="other-work-price" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="0.00">
                     </div>
                   </div>
@@ -147,9 +158,9 @@
               </div>
 
               <div class="form-footer">
-                <p class="estimate-line">Estimated charge <strong id="estimate-value">$0.00</strong></p>
+                <p class="estimate-line">Estimated total <strong id="estimate-value">$0.00</strong></p>
                 <button class="button button-primary" type="submit">
-                  <span>Add to today's bags</span><span class="button-arrow" aria-hidden="true">→</span>
+                  <span>Add to today's job bags</span><span class="button-arrow" aria-hidden="true">→</span>
                 </button>
               </div>
               <p class="form-error" id="form-error" role="alert" hidden></p>
@@ -190,7 +201,7 @@
               <p class="summary-value" id="selected-count">0</p>
             </article>
             <article class="summary-card">
-              <div class="summary-top"><span class="summary-label">AVERAGE / BAG</span><span class="summary-symbol summary-symbol-muted">↗</span></div>
+              <div class="summary-top"><span class="summary-label">AVERAGE PER BAG</span><span class="summary-symbol summary-symbol-muted">↗</span></div>
               <p class="summary-value" id="selected-average">$0</p>
             </article>
           </section>
@@ -203,11 +214,11 @@
                   <p class="summary-value" id="week-total">$0</p>
                 </article>
                 <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label">AVG / WORKDAY</span></div>
+                  <div class="summary-top"><span class="summary-label">AVERAGE PER WORKDAY</span></div>
                   <p class="summary-value" id="week-average">$0</p>
                 </article>
                 <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label" id="week-change-label">VS PREVIOUS WEEK</span></div>
+                  <div class="summary-top"><span class="summary-label" id="week-change-label">VS. PREVIOUS WEEK</span></div>
                   <p class="summary-value change-value" id="week-change">—</p>
                 </article>
               </div>
@@ -220,11 +231,11 @@
                   <p class="summary-value" id="month-total">$0</p>
                 </article>
                 <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label">AVG / WORKDAY</span></div>
+                  <div class="summary-top"><span class="summary-label">AVERAGE PER WORKDAY</span></div>
                   <p class="summary-value" id="month-average">$0</p>
                 </article>
                 <article class="summary-card">
-                  <div class="summary-top"><span class="summary-label" id="month-change-label">VS PREVIOUS MONTH</span></div>
+                  <div class="summary-top"><span class="summary-label" id="month-change-label">VS. PREVIOUS MONTH</span></div>
                   <p class="summary-value change-value" id="month-change">—</p>
                 </article>
               </div>
@@ -264,8 +275,8 @@
           <section class="panel lookup-panel">
             <div class="lookup-toolbar">
               <div class="field">
-                <label class="field-label" for="lookup-reference">Reference #</label>
-                <input class="text-input" id="lookup-reference" type="search" maxlength="60" placeholder="Search reference" autocomplete="off">
+                <label class="field-label" for="lookup-reference">Reference number</label>
+                <input class="text-input" id="lookup-reference" type="search" maxlength="60" placeholder="Search by reference number" autocomplete="off">
               </div>
             </div>
             <p class="lookup-message" id="lookup-message" aria-live="polite">Enter a reference to search job bags.</p>

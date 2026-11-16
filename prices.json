@@ -1,6 +1,6 @@
 {
   "currency": "CAD",
-  "rateCardNote": "Edit the explicit numbers in ratesCAD. Half- and quarter-shank rates are listed by width and material; shanks wider than 2 mm charge the first size at the first rate and each additional size at the additional rate. Necklace solder and ring sizing-up follow the same first/additional pricing. Engraving shares one setup fee and per-character rate across rings and necklaces. Custom work is priced manually on each job bag.",
+  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace soldering and ring sizing up use the same first/additional pricing. Engraving has one setup fee and a per-character rate for rings and necklaces. Enter custom-work prices on each job bag.",
   "materials": [
     { "id": "gold-10k", "name": "10k gold" },
     { "id": "gold-14k", "name": "14k gold" },
@@ -136,26 +136,26 @@
   },
   "tasks": {
     "ring": [
-      { "id": "full-shank", "name": "Half shank replacement", "priceTable": "full-shank", "quantityLabel": "Sizes" },
-      { "id": "quarter-shank", "name": "Quarter shank replacement", "priceTable": "quarter-shank", "quantityLabel": "Sizes" },
+      { "id": "full-shank", "name": "Half-shank replacement", "priceTable": "full-shank", "quantityLabel": "Sizes" },
+      { "id": "quarter-shank", "name": "Quarter-shank replacement", "priceTable": "quarter-shank", "quantityLabel": "Sizes" },
       { "id": "resize-up", "name": "Resizing up", "priceTable": "resize-up", "quantityLabel": "Sizes" },
       { "id": "resize-down", "name": "Resizing down", "priceTable": "resize-down" },
       { "id": "quick-polish", "name": "Quick polish", "priceKey": "quick-polish" },
       { "id": "refinish", "name": "Refinish", "priceKey": "refinish" },
-      { "id": "refinish-rhodium", "name": "Refinish & rhodium plate", "priceKey": "refinish-rhodium", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "excludedGoldColors": ["yellow"] },
-      { "id": "rhodium-with-repair", "name": "Rhodium plate (with another repair)", "priceKey": "rhodium-with-repair", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "excludedGoldColors": ["yellow"], "requiresOtherTask": true },
+      { "id": "refinish-rhodium", "name": "Refinish and rhodium plating", "priceKey": "refinish-rhodium", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "excludedGoldColors": ["yellow"] },
+      { "id": "rhodium-with-repair", "name": "Rhodium plating with another repair", "priceKey": "rhodium-with-repair", "eligibleMaterials": ["silver", "gold-10k", "gold-14k", "gold-18k"], "excludedGoldColors": ["yellow"], "requiresOtherTask": true },
       { "id": "retip-prongs", "name": "Retip prongs", "priceKey": "retip-prongs-per-prong", "quantityLabel": "Prongs" },
       { "id": "retip-beads", "name": "Retip beads", "priceKey": "retip-beads-per-bead", "quantityLabel": "Beads" },
-      { "id": "reset-stone", "name": "Re-set stone", "priceKey": "reset-stone" },
-      { "id": "laser-engrave", "name": "Laser engrave", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
+      { "id": "reset-stone", "name": "Reset stone", "priceKey": "reset-stone" },
+      { "id": "laser-engrave", "name": "Laser engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
     ],
     "necklace": [
       { "id": "solder", "name": "Solder", "priceTable": "solder", "quantityLabel": "Solders" },
-      { "id": "rebuild", "name": "Rebuilding", "priceKey": "rebuild-first", "additionalPriceKey": "rebuild-additional", "quantityLabel": "Rebuilds" },
+      { "id": "rebuild", "name": "Rebuild", "priceKey": "rebuild-first", "additionalPriceKey": "rebuild-additional", "quantityLabel": "Rebuilds" },
       { "id": "chain-polish", "name": "Polish", "priceKey": "chain-polish" },
       { "id": "chain-refinish", "name": "Refinish", "priceKey": "chain-refinish" },
-      { "id": "chain-rhodium", "name": "Rhodium plate", "priceKey": "chain-rhodium", "excludedGoldColors": ["yellow"] },
-      { "id": "repair-lobster-clasp", "name": "Repair lobster clasp", "priceKey": "repair-lobster-clasp" },
+      { "id": "chain-rhodium", "name": "Rhodium plating", "priceKey": "chain-rhodium", "excludedGoldColors": ["yellow"] },
+      { "id": "repair-lobster-clasp", "name": "Lobster clasp repair", "priceKey": "repair-lobster-clasp" },
       { "id": "necklace-engrave", "name": "Engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
     ]
   }
