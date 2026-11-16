@@ -189,12 +189,6 @@
           <div class="summary-page-heading">
             <h1 id="summary-heading">Summary</h1>
             <input id="summary-date" type="hidden">
-            <div class="calendar-month-nav" aria-label="Calendar month navigation">
-              <button class="month-nav-button" id="previous-month" type="button" aria-label="Previous month">‹</button>
-              <p class="calendar-month-label" id="calendar-month-label"></p>
-              <button class="month-nav-today" id="today-button" type="button">Today</button>
-              <button class="month-nav-button" id="next-month" type="button" aria-label="Next month">›</button>
-            </div>
           </div>
           <section class="summary-grid period-stats" aria-label="Repair totals">
             <article class="summary-card summary-primary">
@@ -210,17 +204,29 @@
               <p class="summary-value" id="month-total">$0</p>
             </article>
           </section>
-          <section class="panel calendar-panel" aria-labelledby="calendar-heading">
+          <section class="panel calendar-panel" aria-labelledby="calendar-month-label">
             <div class="panel-heading calendar-heading">
-              <div>
-                <h2 id="calendar-heading">Repair calendar</h2>
+              <div class="calendar-heading-content">
+                <div class="calendar-heading-row">
+                  <div class="calendar-month-nav" aria-label="Calendar month navigation">
+                    <button class="month-nav-button" id="previous-month" type="button" aria-label="Previous month">‹</button>
+                    <h2 class="calendar-month-label" id="calendar-month-label"></h2>
+                    <button class="month-nav-today" id="today-button" type="button">Today</button>
+                    <button class="month-nav-button" id="next-month" type="button" aria-label="Next month">›</button>
+                  </div>
+                  <div class="calendar-month-total">
+                    <span class="calendar-month-total-label">MONTH TOTAL</span>
+                    <strong id="calendar-month-total">$0</strong>
+                  </div>
+                </div>
                 <p class="calendar-caption">Select a day to view its job bags.</p>
               </div>
             </div>
-            <div class="calendar-grid calendar-weekdays" aria-hidden="true">
+            <div class="calendar-weekdays" aria-hidden="true">
               <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+              <span class="week-total-heading">Week total</span>
             </div>
-            <div class="calendar-grid" id="calendar-grid" role="group" aria-label="Job totals by day"></div>
+            <div class="calendar-weeks" id="calendar-grid" role="group" aria-label="Job totals by day"></div>
           </section>
           <section class="panel day-summary-panel" id="selected-day-panel" aria-labelledby="selected-day-heading" hidden>
             <div class="panel-heading day-summary-heading">

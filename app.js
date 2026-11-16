@@ -29,6 +29,7 @@ const elements = {
   previousMonth: document.querySelector("#previous-month"),
   nextMonth: document.querySelector("#next-month"),
   todayButton: document.querySelector("#today-button"),
+  calendarMonthTotal: document.querySelector("#calendar-month-total"),
   selectedDayTotalLabel: document.querySelector("#selected-day-total-label"),
   selectedTotal: document.querySelector("#selected-total"),
   selectedDayPanel: document.querySelector("#selected-day-panel"),
@@ -791,14 +792,6 @@ function renderSelectedDay(dayKey, dayBags) {
   elements.selectedDayPanel.hidden = false;
 }
 
-function compactMoney(amount) {
-  return formatCurrency(amount, {
-    notation: "compact",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  });
-}
-
 function totalForDates(dateKeys, bagsByDate) {
   return dateKeys.reduce((sum, date) => {
     const bags = bagsByDate.get(date) || [];
@@ -815,28 +808,44 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
     year: "numeric",
     timeZone: "UTC",
   }).format(monthDate);
-  elements.calendarGrid.innerHTML = [
-    ...Array.from({ length: firstDay }, () => '<span class="calendar-day-spacer" aria-hidden="true"></span>'),
-    ...monthDates.map((dateKey) => {
+  const calendarDays = [
+    ...Array.from({ length: firstDay }, () => null),
+    ...monthDates,
+  ];
+  while (calendarDays.length % 7) calendarDays.push(null);
+  const weekMarkup = [];
+  for (let index = 0; index < calendarDays.length; index += 7) {
+    const week = calendarDays.slice(index, index + 7);
+    const weekDates = week.filter(Boolean);
+    const dayMarkup = week.map((dateKey) => {
+      if (!dateKey) return '<span class="calendar-day-spacer" aria-hidden="true"></span>';
       const bags = bagsByDate.get(dateKey) || [];
       const total = bags.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
       const date = new Date(`${dateKey}T12:00:00Z`);
-      const dayNumber = date.getUTCDate();
       const bagLabel = bags.length === 1 ? "1 job bag" : `${bags.length} job bags`;
       const classes = [
         "calendar-day",
         dateKey === selectedDate ? "is-selected" : "",
         dateKey === today ? "is-today" : "",
       ].filter(Boolean).join(" ");
-      const detail = bags.length ? `${compactMoney(total)} · ${bagLabel}` : "";
       return `
-        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}: ${money(total)}, ${bagLabel}">
-          <span class="calendar-day-number">${dayNumber}</span>
-          <span class="calendar-day-total">${detail}</span>
+        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}: ${money(total)}, ${bagLabel}" title="${money(total)}">
+          <span class="calendar-day-number">${date.getUTCDate()}</span>
+          <span class="calendar-day-total">${money(total)}</span>
         </button>
       `;
-    }),
-  ].join("");
+    }).join("");
+    weekMarkup.push(`
+      <div class="calendar-week">
+        ${dayMarkup}
+        <div class="calendar-week-total">
+          <span>Week total</span>
+          <strong>${money(totalForDates(weekDates, bagsByDate))}</strong>
+        </div>
+      </div>
+    `);
+  }
+  elements.calendarGrid.innerHTML = weekMarkup.join("");
 
   elements.calendarGrid.querySelectorAll("[data-calendar-date]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -854,6 +863,7 @@ function renderSummaryTotals(selectedDate, bagsByDate) {
   const dayTotal = totalForDates([selectedDate], bagsByDate);
   const weekToDate = calendarWeekDates(selectedDate).filter((date) => date <= selectedDate);
   const monthToDate = calendarMonthDates(selectedDate).filter((date) => date <= selectedDate);
+  elements.calendarMonthTotal.textContent = money(totalForDates(calendarMonthDates(selectedDate), bagsByDate));
   elements.selectedDayTotalLabel.textContent = selectedDate === torontoDateKey() ? "TODAY'S TOTAL" : "DAY TOTAL";
   elements.selectedTotal.textContent = money(dayTotal);
   elements.weekTotal.textContent = money(totalForDates(weekToDate, bagsByDate));
