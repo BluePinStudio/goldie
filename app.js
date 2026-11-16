@@ -64,6 +64,7 @@ const elements = {
   form: document.querySelector("#job-form"),
   reference: document.querySelector("#job-reference"),
   noJobBag: document.querySelector("#no-job-bag"),
+  itemNumberField: document.querySelector("#item-number-field"),
   itemNumber: document.querySelector("#item-number"),
   repairTime: document.querySelector("#repair-time"),
   itemType: document.querySelector("#item-type"),
@@ -484,12 +485,13 @@ function updateConditionalTaskVisibility() {
     const hiddenTasks = new Set();
     if (resizingSelected) {
       hiddenTasks.add(selected.has("resize-up") ? "resize-down" : "resize-up");
-      for (const id of ["full-shank", "quarter-shank", "refinish", "refinish-rhodium"]) hiddenTasks.add(id);
+      for (const id of ["full-shank", "quarter-shank", "quick-polish", "refinish", "refinish-rhodium"]) hiddenTasks.add(id);
     } else if (shankSelected) {
-      for (const id of ["resize-up", "resize-down", "refinish", "refinish-rhodium"]) hiddenTasks.add(id);
+      for (const id of ["resize-up", "resize-down", "quick-polish", "refinish", "refinish-rhodium"]) hiddenTasks.add(id);
       if (selected.has("full-shank")) hiddenTasks.add("quarter-shank");
       if (selected.has("quarter-shank")) hiddenTasks.add("full-shank");
     }
+    if (resizingSelected || selected.has("quarter-shank")) hiddenTasks.add("solder-break-only");
     if (selected.has("refinish")) hiddenTasks.add("refinish-rhodium");
     if (selected.has("refinish-rhodium")) hiddenTasks.add("refinish");
     if (refinishSelected) hiddenTasks.add("quick-polish");
@@ -500,11 +502,15 @@ function updateConditionalTaskVisibility() {
     if (selected.has("unsolder-rings")) {
       hiddenTasks.add("solder-rings-bottom");
       hiddenTasks.add("solder-rings-top-and-bottom");
+      hiddenTasks.add("solder-break-only");
     } else if (selected.has("solder-rings-bottom")) {
       hiddenTasks.add("solder-rings-top-and-bottom");
       hiddenTasks.add("unsolder-rings");
     } else if (selected.has("solder-rings-top-and-bottom")) {
       hiddenTasks.add("solder-rings-bottom");
+      hiddenTasks.add("unsolder-rings");
+    }
+    if (!selected.has("unsolder-rings") && selected.has("solder-break-only")) {
       hiddenTasks.add("unsolder-rings");
     }
     for (const id of hiddenTasks) {
@@ -674,7 +680,7 @@ function renderBagCard(job, removable) {
 function formatJobIdentifier(job) {
   const reference = String(job.reference || "").trim();
   const itemNumber = Number(job.itemNumber);
-  const hasItemNumber = Number.isInteger(itemNumber) && itemNumber >= 1;
+  const hasItemNumber = job.noJobBag !== true && Number.isInteger(itemNumber) && itemNumber >= 1;
   if (reference) return hasItemNumber ? `${reference}-${itemNumber}` : reference;
   const fallback = job.noJobBag ? "No job bag number" : job.customItem || "Untitled job bag";
   return hasItemNumber ? `${fallback} · Item ${itemNumber}` : fallback;
@@ -1230,10 +1236,18 @@ elements.reference.addEventListener("input", () => elements.reference.setCustomV
 elements.itemNumber.addEventListener("input", () => elements.itemNumber.setCustomValidity(""));
 elements.repairTime.addEventListener("input", () => elements.repairTime.setCustomValidity(""));
 elements.noJobBag.addEventListener("change", () => {
+  const noJobBag = elements.noJobBag.checked;
   elements.reference.setCustomValidity("");
-  elements.reference.required = !elements.noJobBag.checked;
-  elements.reference.disabled = elements.noJobBag.checked;
-  if (elements.noJobBag.checked) elements.reference.value = "";
+  elements.reference.required = !noJobBag;
+  elements.reference.disabled = noJobBag;
+  elements.itemNumber.required = !noJobBag;
+  elements.itemNumber.disabled = noJobBag;
+  elements.itemNumberField.hidden = noJobBag;
+  if (noJobBag) {
+    elements.reference.value = "";
+    elements.itemNumber.value = "";
+    elements.itemNumber.setCustomValidity("");
+  }
 });
 elements.material.addEventListener("change", () => {
   elements.goldColourSection.hidden = !elements.material.value.startsWith("gold-");
@@ -1294,8 +1308,8 @@ elements.form.addEventListener("submit", async (event) => {
     showError("Only editors can add job bags.");
     return;
   }
-  const itemNumber = Number(elements.itemNumber.value);
-  if (!Number.isInteger(itemNumber) || itemNumber < 1) {
+  const itemNumber = elements.noJobBag.checked ? null : Number(elements.itemNumber.value);
+  if (itemNumber !== null && (!Number.isInteger(itemNumber) || itemNumber < 1)) {
     elements.itemNumber.setCustomValidity("Enter the item number as a whole number greater than zero.");
     elements.itemNumber.reportValidity();
     return;
@@ -1343,7 +1357,7 @@ elements.form.addEventListener("submit", async (event) => {
   const job = {
     reference,
     noJobBag: elements.noJobBag.checked,
-    itemNumber,
+    ...(itemNumber === null ? {} : { itemNumber }),
     type: selection.type,
     customItem: selection.customItem || "",
     materialName: selection.material?.name || "",
@@ -1378,6 +1392,10 @@ elements.form.addEventListener("submit", async (event) => {
     elements.reference.setCustomValidity("");
     elements.reference.required = true;
     elements.reference.disabled = false;
+    elements.itemNumber.setCustomValidity("");
+    elements.itemNumber.required = true;
+    elements.itemNumber.disabled = false;
+    elements.itemNumberField.hidden = false;
     elements.itemType.value = "ring";
     updateItemType();
     showToast(`${reference ? `${reference} added` : "Job bag added"} to today's list.`);

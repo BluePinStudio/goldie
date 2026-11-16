@@ -139,8 +139,8 @@
       "repair-lobster-clasp": 55
     },
     "engraving": {
-      "setup-fee": 25,
-      "per-character": 2
+      "setup-fee": 20,
+      "per-character": 1
     }
   },
   "tasks": {
