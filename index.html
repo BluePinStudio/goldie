@@ -119,13 +119,19 @@
               </div>
             </div>
             <form id="job-form">
-              <div class="field reference-field">
-                <label class="field-label" for="job-reference">Reference number</label>
-                <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 160893" autocomplete="off" required />
-                <label class="no-job-bag-option" for="no-job-bag">
-                  <input id="no-job-bag" name="no-job-bag" type="checkbox">
-                  <span>No job bag number</span>
-                </label>
+              <div class="field-row reference-row">
+                <div class="field reference-field">
+                  <label class="field-label" for="job-reference">Reference number</label>
+                  <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 160893" autocomplete="off" required />
+                  <label class="no-job-bag-option" for="no-job-bag">
+                    <input id="no-job-bag" name="no-job-bag" type="checkbox">
+                    <span>No job bag number</span>
+                  </label>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="item-number">Item number <span class="required-mark" aria-hidden="true">*</span></label>
+                  <input class="text-input" id="item-number" name="item-number" type="number" min="1" step="1" inputmode="numeric" placeholder="1" required />
+                </div>
               </div>
 
               <div class="field-row" id="piece-fields">
@@ -195,6 +201,11 @@
                   </div>
                 </div>
                 <p class="task-footnote" id="task-footnote" hidden></p>
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="repair-time">Repair time (minutes) <span class="required-mark" aria-hidden="true">*</span></label>
+                <input class="text-input" id="repair-time" name="repair-time" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 30" required />
               </div>
 
               <div class="field">

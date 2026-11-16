@@ -112,7 +112,11 @@
       "rhodium-with-repair": 65,
       "retip-prongs-per-prong": 55,
       "retip-beads-per-bead": 45,
-      "reset-stone": 80
+      "reset-stone": 80,
+      "solder-rings-bottom": { "silver": 50, "gold-10k": 60, "gold-14k": 70, "gold-18k": 90, "platinum": 80 },
+      "solder-rings-top-and-bottom": { "silver": 75, "gold-10k": 100, "gold-14k": 110, "gold-18k": 130, "platinum": 120 },
+      "unsolder-rings": { "silver": 25, "gold-10k": 40, "gold-14k": 50, "gold-18k": 60, "platinum": 50 },
+      "solder-break-only": { "silver": 50, "gold-10k": 60, "gold-14k": 70, "gold-18k": 80, "platinum": 70 }
     },
     "necklace": {
       "solder": {
@@ -147,6 +151,10 @@
       { "id": "retip-prongs", "name": "Retip prongs", "priceKey": "retip-prongs-per-prong", "quantityLabel": "Prongs" },
       { "id": "retip-beads", "name": "Retip beads", "priceKey": "retip-beads-per-bead", "quantityLabel": "Beads" },
       { "id": "reset-stone", "name": "Reset stone", "priceKey": "reset-stone" },
+      { "id": "solder-rings-bottom", "name": "Solder two rings together (bottom only)", "materialPriceTable": "solder-rings-bottom" },
+      { "id": "solder-rings-top-and-bottom", "name": "Solder two rings together (top and bottom)", "materialPriceTable": "solder-rings-top-and-bottom" },
+      { "id": "unsolder-rings", "name": "Unsolder rings", "materialPriceTable": "unsolder-rings" },
+      { "id": "solder-break-only", "name": "Solder break only", "materialPriceTable": "solder-break-only" },
       { "id": "laser-engrave", "name": "Laser engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
     ],
     "necklace": [

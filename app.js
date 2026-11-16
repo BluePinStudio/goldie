@@ -56,6 +56,8 @@ const elements = {
   form: document.querySelector("#job-form"),
   reference: document.querySelector("#job-reference"),
   noJobBag: document.querySelector("#no-job-bag"),
+  itemNumber: document.querySelector("#item-number"),
+  repairTime: document.querySelector("#repair-time"),
   itemType: document.querySelector("#item-type"),
   material: document.querySelector("#material"),
   materialField: document.querySelector("#material-field"),
@@ -200,6 +202,11 @@ function taskRates(type, task) {
   const width = type === "ring" && widthInput
     ? catalog.ringWidths.find((entry) => entry.id === widthInput.value)
     : null;
+  if (task.materialPriceTable) {
+    const price = rates[task.materialPriceTable]?.[material?.id];
+    if (!Number.isFinite(price)) return null;
+    return { unit: price, additional: null, setup: 0 };
+  }
   if (task.priceTable) {
     const table = rates[task.priceTable];
     const price = type === "ring"
@@ -267,7 +274,12 @@ function initializeCatalog(data) {
       return rates
         && (task.priceTable
           ? rates[task.priceTable] && typeof rates[task.priceTable] === "object"
-          : Number.isFinite(rates[task.priceKey]))
+          : task.materialPriceTable
+            ? rates[task.materialPriceTable]
+              && typeof rates[task.materialPriceTable] === "object"
+              && Object.keys(rates[task.materialPriceTable]).length > 0
+              && Object.values(rates[task.materialPriceTable]).every(Number.isFinite)
+            : Number.isFinite(rates[task.priceKey]))
         && (task.additionalPriceKey === undefined || Number.isFinite(rates[task.additionalPriceKey]))
         && (task.setupPriceKey === undefined || Number.isFinite(rates[task.setupPriceKey]))
         && (task.characterFactor !== true || Boolean(task.setupPriceKey));
@@ -545,23 +557,40 @@ function renderBagCard(job, removable) {
   const descriptors = job.type === "custom"
     ? ["Custom", job.customItem]
     : [job.type === "chain" ? "Necklace" : `${job.type[0].toUpperCase()}${job.type.slice(1)}`, formatJobMaterial(job), job.widthName];
+  const jobIdentifier = formatJobIdentifier(job);
+  const repairTimeChip = `<span class="detail-chip">Repair time · ${escapeHtml(formatRepairTime(job.repairTimeMinutes))}</span>`;
   return `
     <article class="bag-card">
       <div class="bag-topline">
         <div class="bag-title-wrap">
-          <p class="bag-reference">${escapeHtml(job.reference || (job.noJobBag ? "No job bag number" : job.customItem || "Untitled job bag"))}</p>
+          <p class="bag-reference">${escapeHtml(jobIdentifier)}</p>
           <p class="bag-subtitle">${escapeHtml(descriptors.filter(Boolean).join(" · "))}</p>
         </div>
         <div class="bag-price-wrap">
           <strong class="bag-price">${money(job.total)}</strong>
-          ${removable ? `          <button class="remove-button" type="button" data-remove="${escapeHtml(job.id)}" aria-label="Remove ${escapeHtml(job.reference || "job bag")}">×</button>` : ""}
+          ${removable ? `          <button class="remove-button" type="button" data-remove="${escapeHtml(job.id)}" aria-label="Remove ${escapeHtml(jobIdentifier)}">×</button>` : ""}
         </div>
       </div>
-      <div class="bag-details">${taskChips}</div>
+      <div class="bag-details">${taskChips}${repairTimeChip}</div>
       ${job.notes ? `<p class="bag-notes">${escapeHtml(job.notes)}</p>` : ""}
       <span class="staff-chip">${escapeHtml(job.createdByName || "Staff")}</span>
     </article>
   `;
+}
+
+function formatJobIdentifier(job) {
+  const reference = String(job.reference || "").trim();
+  const itemNumber = Number(job.itemNumber);
+  const hasItemNumber = Number.isInteger(itemNumber) && itemNumber >= 1;
+  if (reference) return hasItemNumber ? `${reference}-${itemNumber}` : reference;
+  const fallback = job.noJobBag ? "No job bag number" : job.customItem || "Untitled job bag";
+  return hasItemNumber ? `${fallback} · Item ${itemNumber}` : fallback;
+}
+
+function formatRepairTime(minutes) {
+  const value = Number(minutes);
+  if (!Number.isInteger(value) || value < 1) return "Not recorded";
+  return `${value} ${value === 1 ? "minute" : "minutes"}`;
 }
 
 function formatJobMaterial(job) {
@@ -631,8 +660,8 @@ function searchLookupIndex(query) {
     return;
   }
   const results = Object.values(lookupIndex).flatMap((entry) => {
-    const reference = normalizeReference(entry.reference);
-    if (!reference) return [];
+    if (!normalizeReference(entry.reference)) return [];
+    const reference = normalizeReference(formatJobIdentifier(entry));
     const distance = fuzzyReferenceDistance(normalized, reference);
     const maxDistance = normalized.length >= 5 ? 2 : 1;
     if (distance > maxDistance) return [];
@@ -646,7 +675,7 @@ function searchLookupIndex(query) {
   elements.lookupResults.innerHTML = matches.map((entry) => `
     <button class="lookup-result" type="button" data-lookup-id="${escapeHtml(entry.jobId)}" data-lookup-date="${escapeHtml(entry.date)}">
       <span class="lookup-result-main">
-        <strong>${escapeHtml(entry.reference)}</strong>
+        <strong>${escapeHtml(formatJobIdentifier(entry))}</strong>
         <span>${escapeHtml(formatDay(entry.date))}</span>
       </span>
       <span class="lookup-result-meta">${entry.createdAt ? escapeHtml(new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" }).format(new Date(entry.createdAt))) : ""}</span>
@@ -717,7 +746,7 @@ function loadLookupJob(date, jobId) {
     inspectedBag: {
       date,
       jobId,
-      reference: job.reference || "",
+      reference: formatJobIdentifier(job),
     },
   });
   const tasks = Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {});
@@ -728,7 +757,7 @@ function loadLookupJob(date, jobId) {
       <div class="lookup-detail-heading">
         <div>
           <p class="eyebrow">JOB BAG</p>
-          <h2>${escapeHtml(job.reference || job.customItem || "Untitled job bag")}</h2>
+          <h2>${escapeHtml(formatJobIdentifier(job))}</h2>
           <p class="lookup-piece">${escapeHtml(piece)}</p>
         </div>
         <strong class="lookup-total">${money(Number(job.total) || 0)}</strong>
@@ -736,7 +765,8 @@ function loadLookupJob(date, jobId) {
       <dl class="lookup-metadata">
         <div><dt>Logged</dt><dd>${escapeHtml(formatLoggedAt(job.createdAt))}</dd></div>
         <div><dt>By</dt><dd>${escapeHtml(job.createdByName || "Unknown")}</dd></div>
-        <div><dt>Reference</dt><dd>${escapeHtml(job.reference || "—")}</dd></div>
+        <div><dt>Repair time</dt><dd>${escapeHtml(formatRepairTime(job.repairTimeMinutes))}</dd></div>
+        <div><dt>Reference</dt><dd>${escapeHtml(formatJobIdentifier(job))}</dd></div>
         ${formatJobMaterial(job) ? `<div><dt>Material</dt><dd>${escapeHtml(formatJobMaterial(job))}</dd></div>` : ""}
         ${job.widthName ? `<div><dt>Ring width</dt><dd>${escapeHtml(job.widthName)}</dd></div>` : ""}
         ${job.customItem ? `<div><dt>Item</dt><dd>${escapeHtml(job.customItem)}</dd></div>` : ""}
@@ -1104,6 +1134,8 @@ function showToast(message) {
 
 elements.itemType.addEventListener("change", updateItemType);
 elements.reference.addEventListener("input", () => elements.reference.setCustomValidity(""));
+elements.itemNumber.addEventListener("input", () => elements.itemNumber.setCustomValidity(""));
+elements.repairTime.addEventListener("input", () => elements.repairTime.setCustomValidity(""));
 elements.noJobBag.addEventListener("change", () => {
   elements.reference.setCustomValidity("");
   elements.reference.required = !elements.noJobBag.checked;
@@ -1169,6 +1201,20 @@ elements.form.addEventListener("submit", async (event) => {
     showError("Only editors can add job bags.");
     return;
   }
+  const itemNumber = Number(elements.itemNumber.value);
+  if (!Number.isInteger(itemNumber) || itemNumber < 1) {
+    elements.itemNumber.setCustomValidity("Enter the item number as a whole number greater than zero.");
+    elements.itemNumber.reportValidity();
+    return;
+  }
+  elements.itemNumber.setCustomValidity("");
+  const repairTimeMinutes = Number(elements.repairTime.value);
+  if (!Number.isInteger(repairTimeMinutes) || repairTimeMinutes < 1) {
+    elements.repairTime.setCustomValidity("Enter the repair time as a whole number of minutes.");
+    elements.repairTime.reportValidity();
+    return;
+  }
+  elements.repairTime.setCustomValidity("");
   if (!elements.noJobBag.checked && !elements.reference.value.trim()) {
     elements.reference.setCustomValidity("Enter a reference number or select No job bag.");
     elements.reference.reportValidity();
@@ -1204,6 +1250,7 @@ elements.form.addEventListener("submit", async (event) => {
   const job = {
     reference,
     noJobBag: elements.noJobBag.checked,
+    itemNumber,
     type: selection.type,
     customItem: selection.customItem || "",
     materialName: selection.material?.name || "",
@@ -1219,6 +1266,7 @@ elements.form.addEventListener("submit", async (event) => {
       characterFactor: Boolean(characterFactor),
     })),
     notes: elements.form.elements.notes.value.trim(),
+    repairTimeMinutes,
     total: selection.total,
     createdAt: Date.now(),
     createdByUid: currentUser.uid,
