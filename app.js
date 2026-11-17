@@ -1526,6 +1526,9 @@ elements.form.addEventListener("submit", async (event) => {
     elements.itemNumberField.hidden = false;
     elements.itemType.value = "ring";
     updateItemType();
+    if (window.matchMedia("(max-width: 720px)").matches) {
+      elements.form.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     showToast(`${reference ? `${reference} added` : "Job bag added"} to today's list.`);
   } catch (error) {
     console.error("Could not save the job bag:", error);
