@@ -892,9 +892,20 @@ function groupSummaryBags(dayBags) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(job);
   }
-  return Array.from(groups.values()).sort((left, right) =>
-    Math.max(...right.map((job) => Number(job.createdAt) || 0))
-    - Math.max(...left.map((job) => Number(job.createdAt) || 0)));
+  return Array.from(groups.values()).sort((left, right) => {
+    const leftReference = String(left[0].reference || "").trim();
+    const rightReference = String(right[0].reference || "").trim();
+    const leftNumber = /^\d+$/.test(leftReference) ? Number(leftReference) : null;
+    const rightNumber = /^\d+$/.test(rightReference) ? Number(rightReference) : null;
+    if (leftNumber !== null && rightNumber !== null && leftNumber !== rightNumber) return leftNumber - rightNumber;
+    if (leftNumber !== null && rightNumber === null) return -1;
+    if (leftNumber === null && rightNumber !== null) return 1;
+    if (leftReference && !rightReference) return -1;
+    if (!leftReference && rightReference) return 1;
+    return leftReference.localeCompare(rightReference, undefined, { numeric: true })
+      || Math.max(...right.map((job) => Number(job.createdAt) || 0))
+        - Math.max(...left.map((job) => Number(job.createdAt) || 0));
+  });
 }
 
 function renderSummaryBagGroup(jobsInGroup) {
