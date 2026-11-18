@@ -143,7 +143,6 @@ h1 { margin-bottom: 0; font: 600 28px/1.2 var(--serif); letter-spacing: -.6px; }
 .calendar-week-total strong { color: #424637; font: 600 18px/1.2 var(--serif); text-align: right; overflow-wrap: anywhere; }
 .day-summary-heading { margin-bottom: 17px; }
 .selected-day-holidays { margin: 7px 0 0; color: #796548; font-size: 12px; line-height: 1.4; }
-.selected-day-empty-holiday { margin: 8px 0 0; color: #796548; font-size: 12px; line-height: 1.4; }
 .calendar-day-labor-users { overflow: hidden; max-width: 100%; color: #77796e; font-size: 10px; line-height: 1.4; text-overflow: ellipsis; }
 .summary-error { margin: 12px 0; color: #a94438; font-size: 12px; }
 

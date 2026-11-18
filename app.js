@@ -61,7 +61,7 @@ const elements = {
   selectedDayHolidays: document.querySelector("#selected-day-holidays"),
   selectedDayList: document.querySelector("#selected-day-list"),
   selectedDayEmpty: document.querySelector("#selected-day-empty"),
-  selectedDayEmptyHoliday: document.querySelector("#selected-day-empty-holiday"),
+  selectedDayEmptyHeading: document.querySelector("#selected-day-empty-heading"),
   summaryError: document.querySelector("#summary-error"),
   bagsDate: document.querySelector("#bags-date"),
   form: document.querySelector("#job-form"),
@@ -1347,8 +1347,9 @@ function renderSelectedDay(dayKey, dayBags) {
   const hasBags = dayBags.length > 0;
   elements.selectedDayHolidays.textContent = holidayDescription;
   elements.selectedDayHolidays.hidden = !hasBags || holidays.length === 0;
-  elements.selectedDayEmptyHoliday.textContent = holidayDescription;
-  elements.selectedDayEmptyHoliday.hidden = hasBags || holidays.length === 0;
+  elements.selectedDayEmptyHeading.textContent = holidays.length
+    ? `No job bags for this day · ${holidayDescription}`
+    : "No job bags for this day.";
   elements.selectedDayList.innerHTML = groupSummaryBags(dayBags).map((jobsInGroup) => renderSummaryBagGroup(jobsInGroup)).join("");
   elements.selectedDayEmpty.hidden = hasBags;
   elements.selectedDayPanel.hidden = false;
