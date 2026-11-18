@@ -1279,9 +1279,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
         }
         const users = Array.from(laborByUser.values())
           .sort((left, right) => right.minutes - left.minutes || left.name.localeCompare(right.name));
-        const totalMinutes = users.reduce((sum, entry) => sum + entry.minutes, 0);
         laborMarkup = users.length ? `
-          <span class="calendar-day-labor-total">Labor · ${escapeHtml(formatRepairTime(totalMinutes))}</span>
           <span class="calendar-day-labor-users">${users.map((entry) =>
             `${escapeHtml(entry.name)} · ${escapeHtml(formatRepairTime(entry.minutes))}`).join("<br>")}</span>
         ` : "";

@@ -127,7 +127,6 @@ h1 { margin-bottom: 0; font: 600 28px/1.2 var(--serif); letter-spacing: -.6px; }
 .calendar-week-total span { color: #898b80; font-size: 9px; font-weight: 600; }
 .calendar-week-total strong { color: #424637; font: 600 16px/1.2 var(--serif); text-align: right; overflow-wrap: anywhere; }
 .day-summary-heading { margin-bottom: 17px; }
-.calendar-day-labor-total { overflow: hidden; max-width: 100%; color: #62684f; font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .calendar-day-labor-users { overflow: hidden; max-width: 100%; color: #77796e; font-size: 8px; line-height: 1.35; text-overflow: ellipsis; }
 .summary-error { margin: 12px 0; color: #a94438; font-size: 12px; }
 
