@@ -872,12 +872,13 @@ function renderSummaryBagGroup(jobsInGroup) {
           </div>
           <strong class="bag-group-item-price">${money(job.total)}</strong>
         </div>
-        <div class="bag-details">${taskChips}<span class="detail-chip">Repair time · ${escapeHtml(formatRepairTime(job.repairTimeMinutes))}</span></div>
+        <div class="bag-details">${taskChips}</div>
         ${job.notes ? `<p class="bag-notes">${escapeHtml(job.notes)}</p>` : ""}
         <span class="staff-chip" style="${staffColor.style}">${escapeHtml(job.createdByName || "Staff")}</span>
       </div>
     `;
   }).join("");
+  const repairTime = sortedJobs.reduce((sum, job) => sum + (Number(job.repairTimeMinutes) || 0), 0);
   return `
     <article class="bag-card bag-card-grouped" style="${userColor.style}">
       <div class="bag-topline">
@@ -885,7 +886,10 @@ function renderSummaryBagGroup(jobsInGroup) {
           <p class="bag-reference">${escapeHtml(reference)}</p>
           <p class="bag-subtitle">${sortedJobs.length} ${sortedJobs.length === 1 ? "item" : "items"}</p>
         </div>
-        <strong class="bag-price">${money(total)}</strong>
+        <div class="bag-summary-meta">
+          <strong class="bag-price">${money(total)}</strong>
+          <span class="bag-repair-time">${escapeHtml(formatRepairTime(repairTime))}</span>
+        </div>
       </div>
       <div class="bag-group-items">${itemMarkup}</div>
     </article>
@@ -904,7 +908,10 @@ function formatJobIdentifier(job) {
 function formatRepairTime(minutes) {
   const value = Number(minutes);
   if (!Number.isInteger(value) || value < 1) return "Not recorded";
-  return `${value} ${value === 1 ? "minute" : "minutes"}`;
+  const hours = Math.floor(value / 60);
+  const remainingMinutes = value % 60;
+  if (!hours) return `${remainingMinutes}m`;
+  return `${hours}h ${String(remainingMinutes).padStart(2, "0")}m`;
 }
 
 function formatJobMaterial(job) {
@@ -1260,6 +1267,25 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
       const hasFullMoon = fullMoonDates.has(dateKey);
       const bagCount = groupSummaryBags(bags).length;
       const bagLabel = bagCount === 1 ? "1 job bag" : `${bagCount} job bags`;
+      let laborMarkup = "";
+      if (canEdit) {
+        const laborByUser = new Map();
+        for (const job of bags) {
+          const identity = String(job.createdByUid || job.createdByName || "Staff");
+          const name = String(job.createdByName || "Staff").trim() || "Staff";
+          const current = laborByUser.get(identity) || { name, minutes: 0 };
+          current.minutes += Number(job.repairTimeMinutes) || 0;
+          laborByUser.set(identity, current);
+        }
+        const users = Array.from(laborByUser.values())
+          .sort((left, right) => right.minutes - left.minutes || left.name.localeCompare(right.name));
+        const totalMinutes = users.reduce((sum, entry) => sum + entry.minutes, 0);
+        laborMarkup = users.length ? `
+          <span class="calendar-day-labor-total">Labor · ${escapeHtml(formatRepairTime(totalMinutes))}</span>
+          <span class="calendar-day-labor-users">${users.map((entry) =>
+            `${escapeHtml(entry.name)} · ${escapeHtml(formatRepairTime(entry.minutes))}`).join("<br>")}</span>
+        ` : "";
+      }
       const classes = [
         "calendar-day",
         dateKey.slice(0, 7) !== monthDates[0].slice(0, 7) ? "is-outside-month" : "",
@@ -1270,6 +1296,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
         <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}${hasFullMoon ? ", Full moon" : ""}: ${money(total)}, ${bagLabel}" title="${hasFullMoon ? "Full moon · " : ""}${money(total)}">
           <span class="calendar-day-number">${date.getUTCDate()}${hasFullMoon ? '<span class="full-moon-indicator" aria-hidden="true">🌕</span>' : ""}</span>
           <span class="calendar-day-total">${money(total)}</span>
+          ${laborMarkup}
         </button>
       `;
     }).join("");

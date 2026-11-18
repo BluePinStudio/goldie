@@ -113,7 +113,7 @@ h1 { margin-bottom: 0; font: 600 28px/1.2 var(--serif); letter-spacing: -.6px; }
 .calendar-weekdays .week-total-heading { text-align: right; }
 .calendar-weeks { display: grid; gap: 7px; }
 .calendar-week { align-items: stretch; }
-.calendar-day { min-width: 0; min-height: 78px; }
+.calendar-day { min-width: 0; min-height: 112px; }
 .calendar-day { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 9px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 8px; text-align: left; cursor: pointer; }
 .calendar-day:hover { border-color: #b7b9aa; background: #fcfbf6; }
 .calendar-day.is-outside-month { color: #85877c; background: #f7f6f1; border-color: #efeee8; }
@@ -127,6 +127,8 @@ h1 { margin-bottom: 0; font: 600 28px/1.2 var(--serif); letter-spacing: -.6px; }
 .calendar-week-total span { color: #898b80; font-size: 9px; font-weight: 600; }
 .calendar-week-total strong { color: #424637; font: 600 16px/1.2 var(--serif); text-align: right; overflow-wrap: anywhere; }
 .day-summary-heading { margin-bottom: 17px; }
+.calendar-day-labor-total { overflow: hidden; max-width: 100%; color: #62684f; font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-day-labor-users { overflow: hidden; max-width: 100%; color: #77796e; font-size: 8px; line-height: 1.35; text-overflow: ellipsis; }
 .summary-error { margin: 12px 0; color: #a94438; font-size: 12px; }
 
 .workspace { display: grid; grid-template-columns: minmax(340px, .88fr) minmax(440px, 1.12fr); align-items: start; gap: 17px; }
@@ -239,6 +241,8 @@ h2 { font: 600 21px/1.25 var(--serif); margin-bottom: 0; letter-spacing: -.2px; 
 .bag-subtitle { margin-bottom: 0; color: #9a9b91; font-size: 9px; text-transform: capitalize; }
 .bag-price-wrap { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .bag-price { color: #424637; font: 600 17px var(--serif); }
+.bag-summary-meta { display: grid; justify-items: end; gap: 3px; flex-shrink: 0; text-align: right; }
+.bag-repair-time { color: #77796e; font-size: 10px; font-weight: 600; }
 .remove-button { display: grid; place-items: center; width: 23px; height: 23px; color: #a5a59a; background: transparent; border: 0; border-radius: 5px; font-size: 17px; line-height: 1; }
 .remove-button:hover { color: #a35245; background: #f8efec; }
 .bag-details { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
@@ -305,7 +309,7 @@ h2 { font: 600 21px/1.25 var(--serif); margin-bottom: 0; letter-spacing: -.2px; 
   .calendar-weekdays .week-total-heading { display: none; }
   .calendar-week-total { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; min-height: 32px; padding: 5px 8px; }
   .calendar-week-total strong { font-size: 12px; }
-  .calendar-day, .calendar-day-spacer { min-height: 64px; }
+  .calendar-day, .calendar-day-spacer { min-height: 92px; }
   .calendar-day { gap: 6px; padding: 6px 5px; border-radius: 6px; }
   .calendar-day-number { font-size: 11px; }
   .calendar-day-total { font-size: clamp(6px, 2vw, 8px); letter-spacing: -.2px; }
