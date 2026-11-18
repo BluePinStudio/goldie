@@ -61,6 +61,7 @@ const elements = {
   selectedDayHolidays: document.querySelector("#selected-day-holidays"),
   selectedDayList: document.querySelector("#selected-day-list"),
   selectedDayEmpty: document.querySelector("#selected-day-empty"),
+  selectedDayEmptyHoliday: document.querySelector("#selected-day-empty-holiday"),
   summaryError: document.querySelector("#summary-error"),
   bagsDate: document.querySelector("#bags-date"),
   form: document.querySelector("#job-form"),
@@ -1342,10 +1343,14 @@ function renderSelectedDay(dayKey, dayBags) {
   elements.selectedDayDate.dateTime = dayKey;
   elements.selectedDayDate.textContent = formatDay(dayKey);
   const holidays = configuredHolidaysForGrid([dayKey], holidayDefinitions).get(dayKey) || [];
-  elements.selectedDayHolidays.textContent = holidays.map((holiday) => `${holiday.emoji} ${holiday.name}`).join(" · ");
-  elements.selectedDayHolidays.hidden = holidays.length === 0;
+  const holidayDescription = holidays.map((holiday) => `${holiday.emoji} ${holiday.name}`).join(" · ");
+  const hasBags = dayBags.length > 0;
+  elements.selectedDayHolidays.textContent = holidayDescription;
+  elements.selectedDayHolidays.hidden = !hasBags || holidays.length === 0;
+  elements.selectedDayEmptyHoliday.textContent = holidayDescription;
+  elements.selectedDayEmptyHoliday.hidden = hasBags || holidays.length === 0;
   elements.selectedDayList.innerHTML = groupSummaryBags(dayBags).map((jobsInGroup) => renderSummaryBagGroup(jobsInGroup)).join("");
-  elements.selectedDayEmpty.hidden = dayBags.length > 0;
+  elements.selectedDayEmpty.hidden = hasBags;
   elements.selectedDayPanel.hidden = false;
 }
 
