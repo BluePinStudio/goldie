@@ -21,6 +21,7 @@ const elements = {
   authPassword: document.querySelector("#auth-password"),
   rememberMe: document.querySelector("#remember-me"),
   signUpForm: document.querySelector("#email-sign-up-form"),
+  signUpFirstName: document.querySelector("#sign-up-first-name"),
   signUpEmail: document.querySelector("#sign-up-email"),
   signUpPassword: document.querySelector("#sign-up-password"),
   signUpRememberMe: document.querySelector("#sign-up-remember-me"),
@@ -1707,6 +1708,7 @@ function setAuthBusy(isBusy) {
     elements.authEmail,
     elements.authPassword,
     elements.rememberMe,
+    elements.signUpFirstName,
     elements.signUpEmail,
     elements.signUpPassword,
     elements.signUpRememberMe,
@@ -1766,21 +1768,34 @@ async function authenticateWithEmail(createAccount) {
   const passwordInput = createAccount ? elements.signUpPassword : elements.authPassword;
   const rememberMe = createAccount ? elements.signUpRememberMe : elements.rememberMe;
   if (!form.reportValidity()) return;
+  const firstName = createAccount ? elements.signUpFirstName.value.trim() : "";
+  if (createAccount && !firstName) {
+    elements.signUpFirstName.setCustomValidity("Enter your first name.");
+    elements.signUpFirstName.reportValidity();
+    return;
+  }
+  if (createAccount) elements.signUpFirstName.setCustomValidity("");
 
   setAuthBusy(true);
   showAuthMessage("");
+  let accountCreated = false;
   try {
     await setAuthPersistence(rememberMe);
     const email = emailInput.value.trim();
     const password = passwordInput.value;
     if (createAccount) {
-      await firebaseModules.createUserWithEmailAndPassword(firebaseAuth, email, password);
+      const credential = await firebaseModules.createUserWithEmailAndPassword(firebaseAuth, email, password);
+      accountCreated = true;
+      await firebaseModules.updateProfile(credential.user, { displayName: firstName });
+      elements.accountName.textContent = firstName;
     } else {
       await firebaseModules.signInWithEmailAndPassword(firebaseAuth, email, password);
     }
   } catch (error) {
-    console.error(createAccount ? "Email sign-up failed:" : "Email login failed:", error);
-    showAuthMessage(authErrorMessage(error, createAccount ? "Email sign-up" : "Email login"));
+    console.error(accountCreated ? "Could not save the new user's first name:" : createAccount ? "Email sign-up failed:" : "Email login failed:", error);
+    showAuthMessage(accountCreated
+      ? "Your account was created, but we couldn't save your first name. Contact an administrator for help."
+      : authErrorMessage(error, createAccount ? "Email sign-up" : "Email login"));
   } finally {
     setAuthBusy(false);
   }
@@ -1810,6 +1825,7 @@ elements.signUpForm.addEventListener("submit", (event) => {
   event.preventDefault();
   void authenticateWithEmail(true);
 });
+elements.signUpFirstName.addEventListener("input", () => elements.signUpFirstName.setCustomValidity(""));
 elements.forgotPassword.addEventListener("click", sendPasswordRecovery);
 elements.showSignUp.addEventListener("click", () => {
   showAuthPage("sign-up");
