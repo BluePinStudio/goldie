@@ -101,6 +101,7 @@ const elements = {
 };
 
 let catalog;
+let holidayDefinitions = [];
 let jobs = [];
 let currentUser = null;
 let canEdit = false;
@@ -191,6 +192,17 @@ function dateKeyFromUtcDate(date) {
   return date.toISOString().slice(0, 10);
 }
 
+const HOLIDAY_WEEKDAYS = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+const HOLIDAY_KINDS = new Set(["general", "valentine", "canada", "christmas", "halloween", "birthday"]);
+
 function nthWeekdayOfMonth(year, month, weekday, occurrence) {
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const day = 1 + (weekday - firstWeekday + 7) % 7 + (occurrence - 1) * 7;
@@ -215,35 +227,105 @@ function easterSundayDateKey(year) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function canadianHolidaysForGrid(calendarDates) {
+function validateHolidayDefinitions(definitions) {
+  if (!Array.isArray(definitions)) throw new Error("holidays.json must contain a holidays array.");
+  definitions.forEach((holiday, index) => {
+    const entry = `holidays.json entry ${index + 1}`;
+    if (!holiday || typeof holiday !== "object" || Array.isArray(holiday)) {
+      throw new Error(`${entry} must be an object.`);
+    }
+    if (typeof holiday.name !== "string" || !holiday.name.trim()) {
+      throw new Error(`${entry} needs a non-empty name.`);
+    }
+    if (typeof holiday.emoji !== "string" || !holiday.emoji.trim()) {
+      throw new Error(`${entry} needs an emoji.`);
+    }
+    if (holiday.kind !== undefined && !HOLIDAY_KINDS.has(holiday.kind)) {
+      throw new Error(`${entry} has an unsupported kind.`);
+    }
+    const validMonth = Number.isInteger(holiday.month) && holiday.month >= 1 && holiday.month <= 12;
+    const validDay = (month, day) => Number.isInteger(day)
+      && day >= 1
+      && day <= new Date(Date.UTC(2000, month, 0)).getUTCDate();
+    switch (holiday.type) {
+      case "annual":
+        if (!validMonth || !validDay(holiday.month, holiday.day)) throw new Error(`${entry} has an invalid annual month or day.`);
+        break;
+      case "nth-weekday":
+        if (!validMonth
+          || !Object.prototype.hasOwnProperty.call(HOLIDAY_WEEKDAYS, holiday.weekday)
+          || !Number.isInteger(holiday.occurrence)
+          || holiday.occurrence < 1
+          || holiday.occurrence > 5) {
+          throw new Error(`${entry} needs a valid month, weekday, and occurrence (1-5).`);
+        }
+        break;
+      case "weekday-on-or-before":
+        if (!validMonth
+          || !validDay(holiday.month, holiday.day)
+          || !Object.prototype.hasOwnProperty.call(HOLIDAY_WEEKDAYS, holiday.weekday)) {
+          throw new Error(`${entry} needs a valid month, day, and weekday.`);
+        }
+        break;
+      case "easter-offset":
+        if (!Number.isInteger(holiday.offsetDays)) throw new Error(`${entry} needs an integer offsetDays value.`);
+        break;
+      case "one-off": {
+        const date = typeof holiday.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(holiday.date)
+          ? new Date(`${holiday.date}T12:00:00Z`)
+          : null;
+        if (!date || Number.isNaN(date.getTime()) || dateKeyFromUtcDate(date) !== holiday.date) {
+          throw new Error(`${entry} needs a valid YYYY-MM-DD date.`);
+        }
+        break;
+      }
+      default:
+        throw new Error(`${entry} has an unsupported type.`);
+    }
+  });
+  return definitions;
+}
+
+function configuredHolidaysForGrid(calendarDates, definitions) {
   const years = new Set(calendarDates.map((dateKey) => Number(dateKey.slice(0, 4))));
+  const visibleDates = new Set(calendarDates);
   const holidays = new Map();
-  const addHoliday = (dateKey, label, icon, kind = "general") => holidays.set(dateKey, { label, icon, kind });
-  for (const year of years) {
-    addHoliday(`${year}-01-01`, "New Year's Day", "🎉");
-    addHoliday(`${year}-02-14`, "Valentine's Day", "💝", "valentine");
-    addHoliday(nthWeekdayOfMonth(year, 2, 1, 3), "Family Day", "🧡", "valentine");
-    const easterSunday = easterSundayDateKey(year);
-    const goodFriday = new Date(`${easterSunday}T12:00:00Z`);
-    goodFriday.setUTCDate(goodFriday.getUTCDate() - 2);
-    addHoliday(dateKeyFromUtcDate(goodFriday), "Good Friday", "✝️");
-    addHoliday(easterSunday, "Easter Sunday", "🐣");
-    addHoliday(nthWeekdayOfMonth(year, 5, 0, 2), "Mother's Day", "🌷", "valentine");
-    const victoriaDay = new Date(Date.UTC(year, 4, 24));
-    victoriaDay.setUTCDate(victoriaDay.getUTCDate() - (victoriaDay.getUTCDay() + 6) % 7);
-    addHoliday(dateKeyFromUtcDate(victoriaDay), "Victoria Day", "👑");
-    addHoliday(nthWeekdayOfMonth(year, 6, 0, 3), "Father's Day", "💙", "valentine");
-    addHoliday(`${year}-07-01`, "Canada Day", "🍁", "canada");
-    addHoliday(nthWeekdayOfMonth(year, 8, 1, 1), "Civic Holiday", "🏕️");
-    addHoliday(nthWeekdayOfMonth(year, 9, 1, 1), "Labour Day", "🛠️");
-    addHoliday(`${year}-09-30`, "National Day for Truth and Reconciliation", "🧡", "canada");
-    addHoliday(nthWeekdayOfMonth(year, 10, 1, 2), "Thanksgiving", "🦃");
-    addHoliday(`${year}-10-31`, "Halloween", "🎃", "halloween");
-    addHoliday(`${year}-11-11`, "Remembrance Day", "🌺", "canada");
-    addHoliday(`${year}-12-24`, "Christmas Eve", "🎄", "christmas");
-    addHoliday(`${year}-12-25`, "Christmas Day", "🎄", "christmas");
-    addHoliday(`${year}-12-26`, "Boxing Day", "🎁", "christmas");
-    addHoliday(`${year}-12-31`, "New Year's Eve", "🥂");
+  const addHoliday = (dateKey, definition) => {
+    if (!visibleDates.has(dateKey)) return;
+    const entries = holidays.get(dateKey) || [];
+    entries.push({
+      name: definition.name.trim(),
+      emoji: definition.emoji,
+      kind: definition.kind || "general",
+    });
+    holidays.set(dateKey, entries);
+  };
+  for (const definition of definitions) {
+    if (definition.type === "one-off") {
+      addHoliday(definition.date, definition);
+      continue;
+    }
+    for (const year of years) {
+      let dateKey;
+      if (definition.type === "annual") {
+        const date = new Date(Date.UTC(year, definition.month - 1, definition.day));
+        if (date.getUTCMonth() !== definition.month - 1 || date.getUTCDate() !== definition.day) continue;
+        dateKey = dateKeyFromUtcDate(date);
+      } else if (definition.type === "nth-weekday") {
+        dateKey = nthWeekdayOfMonth(year, definition.month, HOLIDAY_WEEKDAYS[definition.weekday], definition.occurrence);
+        if (Number(dateKey.slice(5, 7)) !== definition.month) continue;
+      } else if (definition.type === "weekday-on-or-before") {
+        const date = new Date(Date.UTC(year, definition.month - 1, definition.day));
+        const targetWeekday = HOLIDAY_WEEKDAYS[definition.weekday];
+        date.setUTCDate(date.getUTCDate() - (date.getUTCDay() - targetWeekday + 7) % 7);
+        dateKey = dateKeyFromUtcDate(date);
+      } else {
+        const date = new Date(`${easterSundayDateKey(year)}T12:00:00Z`);
+        date.setUTCDate(date.getUTCDate() + definition.offsetDays);
+        dateKey = dateKeyFromUtcDate(date);
+      }
+      addHoliday(dateKey, definition);
+    }
   }
   return holidays;
 }
@@ -1281,7 +1363,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
   elements.calendarMonthTotal.textContent = money(totalForDates(monthDates, bagsByDate));
   const calendarDays = calendarGridDates(monthDates);
   const fullMoonDates = fullMoonDatesForGrid(calendarDays);
-  const holidays = canadianHolidaysForGrid(calendarDays);
+  const holidays = configuredHolidaysForGrid(calendarDays, holidayDefinitions);
   const weekMarkup = [];
   for (let index = 0; index < calendarDays.length; index += 7) {
     const week = calendarDays.slice(index, index + 7);
@@ -1291,7 +1373,9 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
       const total = bags.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
       const date = new Date(`${dateKey}T12:00:00Z`);
       const hasFullMoon = fullMoonDates.has(dateKey);
-      const holiday = holidays.get(dateKey);
+      const dayHolidays = holidays.get(dateKey) || [];
+      const holidayNames = dayHolidays.map((holiday) => holiday.name).join(", ");
+      const holidayKind = dayHolidays.find((holiday) => holiday.kind !== "general")?.kind;
       const bagCount = groupSummaryBags(bags).length;
       const bagLabel = bagCount === 1 ? "1 job bag" : `${bagCount} job bags`;
       let laborMarkup = "";
@@ -1316,13 +1400,15 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
         dateKey.slice(0, 7) !== monthDates[0].slice(0, 7) ? "is-outside-month" : "",
         dateKey === selectedDate ? "is-selected" : "",
         dateKey === today ? "is-today" : "",
-        holiday ? "is-holiday" : "",
-        holiday ? `is-holiday-${holiday.kind}` : "",
+        dayHolidays.length ? "is-holiday" : "",
+        holidayKind ? `is-holiday-${holidayKind}` : "",
       ].filter(Boolean).join(" ");
       return `
-        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}${hasFullMoon ? ", Full moon" : ""}${holiday ? `, ${escapeHtml(holiday.label)}` : ""}: ${money(total)}, ${bagLabel}" title="${hasFullMoon ? "Full moon · " : ""}${holiday ? `${holiday.label} · ` : ""}${money(total)}">
+        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}${hasFullMoon ? ", Full moon" : ""}${holidayNames ? `, ${escapeHtml(holidayNames)}` : ""}: ${money(total)}, ${bagLabel}" title="${hasFullMoon ? "Full moon · " : ""}${holidayNames ? `${escapeHtml(holidayNames)} · ` : ""}${money(total)}">
           <span class="calendar-day-number">${date.getUTCDate()}${hasFullMoon ? '<span class="full-moon-indicator" aria-hidden="true"></span>' : ""}</span>
-          ${holiday ? `<span class="calendar-holiday"><span aria-hidden="true">${holiday.icon}</span><span>${escapeHtml(holiday.label)}</span></span>` : ""}
+          ${dayHolidays.length ? `<span class="calendar-holidays">${dayHolidays.map((holiday) => `
+            <span class="calendar-holiday"><span aria-hidden="true">${escapeHtml(holiday.emoji)}</span><span>${escapeHtml(holiday.name)}</span></span>
+          `).join("")}</span>` : ""}
           <span class="calendar-day-total">${money(total)}</span>
           ${laborMarkup}
         </button>
@@ -1841,9 +1927,15 @@ async function start() {
   showAuthPage("log-in");
   setAuthBusy(true);
   try {
-    const response = await fetch("./prices.json", { cache: "no-store" });
-    if (!response.ok) throw new Error(`Could not load prices.json (HTTP ${response.status}).`);
-    initializeCatalog(await response.json());
+    const [pricesResponse, holidaysResponse] = await Promise.all([
+      fetch("./prices.json", { cache: "no-store" }),
+      fetch("./holidays.json", { cache: "no-store" }),
+    ]);
+    if (!pricesResponse.ok) throw new Error(`Could not load prices.json (HTTP ${pricesResponse.status}).`);
+    if (!holidaysResponse.ok) throw new Error(`Could not load holidays.json (HTTP ${holidaysResponse.status}).`);
+    const [prices, holidayConfig] = await Promise.all([pricesResponse.json(), holidaysResponse.json()]);
+    holidayDefinitions = validateHolidayDefinitions(holidayConfig?.holidays);
+    initializeCatalog(prices);
 
     if (!isFirebaseConfigured) {
       showAuthMessage("Add your Firebase web app values to firebase-config.js to enable sign-in.");
@@ -1866,7 +1958,7 @@ async function start() {
     setAuthBusy(false);
   } catch (error) {
     console.error("Could not initialize the application:", error);
-    showAuthMessage(`Could not load the app. Check the Firebase configuration, network, and prices.json. ${error.message}`);
+    showAuthMessage(`Could not load the app. Check the Firebase configuration, network, prices.json, and holidays.json. ${error.message}`);
     setAuthBusy(true);
   }
 }
