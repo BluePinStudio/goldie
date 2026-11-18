@@ -58,6 +58,7 @@ const elements = {
   calendarMonthTotal: document.querySelector("#calendar-month-total"),
   selectedDayPanel: document.querySelector("#selected-day-panel"),
   selectedDayDate: document.querySelector("#selected-day-date"),
+  selectedDayHolidays: document.querySelector("#selected-day-holidays"),
   selectedDayList: document.querySelector("#selected-day-list"),
   selectedDayEmpty: document.querySelector("#selected-day-empty"),
   summaryError: document.querySelector("#summary-error"),
@@ -1340,6 +1341,9 @@ function activatePage(page) {
 function renderSelectedDay(dayKey, dayBags) {
   elements.selectedDayDate.dateTime = dayKey;
   elements.selectedDayDate.textContent = formatDay(dayKey);
+  const holidays = configuredHolidaysForGrid([dayKey], holidayDefinitions).get(dayKey) || [];
+  elements.selectedDayHolidays.textContent = holidays.map((holiday) => `${holiday.emoji} ${holiday.name}`).join(" · ");
+  elements.selectedDayHolidays.hidden = holidays.length === 0;
   elements.selectedDayList.innerHTML = groupSummaryBags(dayBags).map((jobsInGroup) => renderSummaryBagGroup(jobsInGroup)).join("");
   elements.selectedDayEmpty.hidden = dayBags.length > 0;
   elements.selectedDayPanel.hidden = false;
