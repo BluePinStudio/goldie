@@ -148,8 +148,8 @@ h2 { font: 600 21px/1.25 var(--serif); margin-bottom: 0; letter-spacing: -.2px; 
 .select-chevron { position: absolute; right: 11px; top: 50%; transform: translateY(-57%); color: #87897f; font-size: 16px; pointer-events: none; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 15px; }
 .field { min-width: 0; }
-.reference-field { margin-bottom: 12px; }
 .no-job-bag-option { display: inline-flex; align-items: center; gap: 8px; margin-top: 9px; color: #77796e; font-size: 11px; cursor: pointer; }
+.reference-row .no-job-bag-option { grid-column: 1; }
 .no-job-bag-option input { width: 17px; height: 17px; margin: 0; accent-color: var(--olive); }
 .conditional-section { margin-top: 18px; }
 .custom-section .field + .field { margin-top: 15px; }

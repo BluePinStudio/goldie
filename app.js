@@ -63,6 +63,7 @@ const elements = {
   bagsDate: document.querySelector("#bags-date"),
   form: document.querySelector("#job-form"),
   reference: document.querySelector("#job-reference"),
+  referenceField: document.querySelector("#reference-field"),
   noJobBag: document.querySelector("#no-job-bag"),
   itemNumberField: document.querySelector("#item-number-field"),
   itemNumber: document.querySelector("#item-number"),
@@ -76,6 +77,7 @@ const elements = {
   customItem: document.querySelector("#custom-item"),
   customPrice: document.querySelector("#custom-price"),
   ringSection: document.querySelector("#ring-section"),
+  otherWorkLabel: document.querySelector("#other-work-label"),
   widthChoices: document.querySelector("#width-choices"),
   taskList: document.querySelector("#task-list"),
   otherWorkEnabled: document.querySelector("#other-work-enabled"),
@@ -386,7 +388,9 @@ async function loadMetalSpotPrices() {
 
 function taskRates(type, task) {
   const rates = catalog.ratesCAD[task.rateGroup || type];
-  const material = catalog.materials.find((entry) => entry.id === elements.material.value);
+  const material = type === "watch"
+    ? null
+    : catalog.materials.find((entry) => entry.id === elements.material.value);
   const widthInput = elements.form.querySelector('input[name="ring-width"]:checked');
   const width = type === "ring" && widthInput
     ? catalog.ringWidths.find((entry) => entry.id === widthInput.value)
@@ -447,8 +451,8 @@ function initializeCatalog(data) {
   if (!data || !Array.isArray(data.materials) || !Array.isArray(data.goldColors) || !Array.isArray(data.ringWidths) || !data.tasks || !data.ratesCAD) {
     throw new Error("The pricing catalog is missing materials, gold colours, ring widths, rates, or tasks.");
   }
-  for (const type of ["ring", "necklace"]) {
-    if (!Array.isArray(data.tasks[type]) || data.tasks[type].length === 0 || !data.ratesCAD[type]) {
+  for (const type of ["ring", "necklace", "bracelet", "watch"]) {
+    if (!Array.isArray(data.tasks[type]) || data.tasks[type].length === 0) {
       throw new Error(`The pricing catalog needs at least one ${type} task.`);
     }
   }
@@ -489,6 +493,8 @@ function renderOptions() {
   elements.itemType.innerHTML = [
     ["ring", "Ring"],
     ["necklace", "Necklace"],
+    ["bracelet", "Bracelet"],
+    ["watch", "Watch"],
     ["custom", "Custom"],
   ].map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
   elements.material.innerHTML = catalog.materials
@@ -511,12 +517,14 @@ function renderOptions() {
 function updateItemType() {
   const type = elements.itemType.value;
   const isCustom = type === "custom";
+  const isWatch = type === "watch";
   elements.otherWorkEnabled.checked = false;
   elements.otherWorkName.value = "";
   elements.otherWorkPrice.value = "";
   elements.otherWorkFields.hidden = true;
-  elements.materialField.hidden = isCustom;
-  elements.goldColourSection.hidden = isCustom || !elements.material.value.startsWith("gold-");
+  elements.otherWorkLabel.textContent = isWatch ? "Custom" : "Other";
+  elements.materialField.hidden = isCustom || isWatch;
+  elements.goldColourSection.hidden = isCustom || isWatch || !elements.material.value.startsWith("gold-");
   elements.ringSection.hidden = type !== "ring";
   elements.customSection.hidden = !isCustom;
   elements.form.querySelector(".task-section").hidden = isCustom;
@@ -570,7 +578,9 @@ function updateItemType() {
 
 function updateConditionalTaskVisibility() {
   const type = elements.itemType.value;
-  const material = catalog.materials.find((entry) => entry.id === elements.material.value);
+  const material = type === "watch"
+    ? null
+    : catalog.materials.find((entry) => entry.id === elements.material.value);
   for (const task of catalog.tasks[type]) {
     const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(task.id)}`);
     const option = checkbox?.closest(".task-option");
@@ -677,7 +687,9 @@ function getSelection() {
       total: roundToNearestFive(customPrice),
     };
   }
-  const material = catalog.materials.find((entry) => entry.id === elements.material.value);
+  const material = type === "watch"
+    ? null
+    : catalog.materials.find((entry) => entry.id === elements.material.value);
   const color = material?.id.startsWith("gold-")
     ? catalog.goldColors.find((entry) => entry.id === elements.goldColour.value)
     : null;
@@ -1367,6 +1379,7 @@ elements.noJobBag.addEventListener("change", () => {
   elements.reference.setCustomValidity("");
   elements.reference.required = !noJobBag;
   elements.reference.disabled = noJobBag;
+  elements.referenceField.hidden = noJobBag;
   elements.itemNumber.required = !noJobBag;
   elements.itemNumber.disabled = noJobBag;
   elements.itemNumberField.hidden = noJobBag;
@@ -1449,8 +1462,9 @@ elements.form.addEventListener("submit", async (event) => {
     return;
   }
   elements.repairTime.setCustomValidity("");
-  if (!elements.noJobBag.checked && !elements.reference.value.trim()) {
-    elements.reference.setCustomValidity("Enter a reference number or select No job bag.");
+  const referenceValue = elements.reference.value;
+  if (!elements.noJobBag.checked && (!Number.isInteger(Number(referenceValue)) || Number(referenceValue) < 1)) {
+    elements.reference.setCustomValidity("Enter the job bag number as a whole number greater than zero.");
     elements.reference.reportValidity();
     return;
   }
@@ -1479,7 +1493,7 @@ elements.form.addEventListener("submit", async (event) => {
     return;
   }
   showError("");
-  const reference = elements.noJobBag.checked ? "" : elements.reference.value.trim();
+  const reference = elements.noJobBag.checked ? "" : elements.reference.value;
   const firstName = currentUser.displayName?.trim().split(/\s+/)[0] || "Staff";
   const job = {
     reference,
@@ -1520,6 +1534,7 @@ elements.form.addEventListener("submit", async (event) => {
     elements.reference.setCustomValidity("");
     elements.reference.required = true;
     elements.reference.disabled = false;
+    elements.referenceField.hidden = false;
     elements.itemNumber.setCustomValidity("");
     elements.itemNumber.required = true;
     elements.itemNumber.disabled = false;

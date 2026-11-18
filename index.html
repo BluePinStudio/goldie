@@ -145,18 +145,18 @@
             </div>
             <form id="job-form">
               <div class="field-row reference-row">
-                <div class="field reference-field">
+                <div class="field reference-field" id="reference-field">
                   <label class="field-label" for="job-reference">Reference number</label>
-                  <input class="text-input" id="job-reference" name="reference" type="text" maxlength="60" placeholder="e.g. 160893" autocomplete="off" required />
-                  <label class="no-job-bag-option" for="no-job-bag">
-                    <input id="no-job-bag" name="no-job-bag" type="checkbox">
-                    <span>No job bag number</span>
-                  </label>
+                  <input class="text-input" id="job-reference" name="reference" type="number" min="1" step="1" inputmode="numeric" placeholder="160893" autocomplete="off" required />
                 </div>
                 <div class="field" id="item-number-field">
                   <label class="field-label" for="item-number">Item number <span class="required-mark" aria-hidden="true">*</span></label>
                   <input class="text-input" id="item-number" name="item-number" type="number" min="1" step="1" inputmode="numeric" placeholder="1" required />
                 </div>
+                <label class="no-job-bag-option" for="no-job-bag">
+                  <input id="no-job-bag" name="no-job-bag" type="checkbox">
+                  <span>No job bag number</span>
+                </label>
               </div>
 
               <div class="field-row" id="piece-fields">
@@ -212,7 +212,7 @@
                 <div class="other-work">
                   <label class="other-work-toggle" for="other-work-enabled">
                     <input class="task-input" id="other-work-enabled" type="checkbox" name="other-work-enabled">
-                    <span>Other</span>
+                    <span id="other-work-label">Other</span>
                   </label>
                   <div class="other-work-fields" id="other-work-fields" hidden>
                     <div class="field">

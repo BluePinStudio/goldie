@@ -1,6 +1,6 @@
 {
   "currency": "CAD",
-  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace soldering, rebuilding, ring sizing up, and retip prongs use first/additional pricing. Engraving has one setup fee and a per-character rate for rings and necklaces. Enter custom-work prices on each job bag.",
+  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace and bracelet soldering, rebuilding, ring sizing up, and retip prongs use first/additional pricing. Engraving has one setup fee and a per-character rate for rings, necklaces, and bracelets. Watch battery replacement is $25 and bracelet adjustment is $5. Enter custom-work prices on each job bag.",
   "materials": [
     { "id": "gold-10k", "name": "10k gold" },
     { "id": "gold-14k", "name": "14k gold" },
@@ -143,6 +143,10 @@
       "chain-rhodium": 110,
       "repair-lobster-clasp": 55
     },
+    "watch": {
+      "watch-battery": 25,
+      "adjust-bracelet": 5
+    },
     "engraving": {
       "setup-fee": 20,
       "per-character": 1
@@ -174,6 +178,20 @@
       { "id": "chain-rhodium", "name": "Rhodium plating", "priceKey": "chain-rhodium", "excludedGoldColors": ["yellow"] },
       { "id": "repair-lobster-clasp", "name": "Lobster clasp repair", "priceKey": "repair-lobster-clasp" },
       { "id": "necklace-engrave", "name": "Engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
+    ],
+    "bracelet": [
+      { "id": "solder", "name": "Solder", "rateGroup": "necklace", "priceTable": "solder", "quantityLabel": "Solders" },
+      { "id": "rebuild", "name": "Rebuild", "rateGroup": "necklace", "materialPriceTable": "rebuild", "quantityLabel": "Rebuilds" },
+      { "id": "chain-polish", "name": "Polish", "rateGroup": "necklace", "priceKey": "chain-polish" },
+      { "id": "chain-refinish", "name": "Refinish", "rateGroup": "necklace", "priceKey": "chain-refinish" },
+      { "id": "chain-rhodium", "name": "Rhodium plating", "rateGroup": "necklace", "priceKey": "chain-rhodium", "excludedGoldColors": ["yellow"] },
+      { "id": "repair-lobster-clasp", "name": "Lobster clasp repair", "rateGroup": "necklace", "priceKey": "repair-lobster-clasp" },
+      { "id": "necklace-engrave", "name": "Engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true },
+      { "id": "reset-stone", "name": "Reset stone", "rateGroup": "ring", "priceKey": "reset-stone" }
+    ],
+    "watch": [
+      { "id": "watch-battery", "name": "Watch Battery", "priceKey": "watch-battery" },
+      { "id": "adjust-bracelet", "name": "Adjust bracelet", "priceKey": "adjust-bracelet" }
     ]
   }
 }
