@@ -779,8 +779,9 @@ function renderBagCard(job, removable) {
     : [job.type === "chain" ? "Necklace" : `${job.type[0].toUpperCase()}${job.type.slice(1)}`, formatJobMaterial(job), job.widthName];
   const jobIdentifier = formatJobIdentifier(job);
   const repairTimeChip = `<span class="detail-chip">Repair time · ${escapeHtml(formatRepairTime(job.repairTimeMinutes))}</span>`;
+  const userColor = getUserColor(job);
   return `
-    <article class="bag-card">
+    <article class="bag-card" style="${userColor.style}">
       <div class="bag-topline">
         <div class="bag-title-wrap">
           <p class="bag-reference">${escapeHtml(jobIdentifier)}</p>
@@ -793,7 +794,100 @@ function renderBagCard(job, removable) {
       </div>
       <div class="bag-details">${taskChips}${repairTimeChip}</div>
       ${job.notes ? `<p class="bag-notes">${escapeHtml(job.notes)}</p>` : ""}
-      <span class="staff-chip">${escapeHtml(job.createdByName || "Staff")}</span>
+      <span class="staff-chip" style="${userColor.style}">${escapeHtml(job.createdByName || "Staff")}</span>
+    </article>
+  `;
+}
+
+const USER_COLORS = [
+  { background: "#edf2e6", border: "#a6b18f", text: "#52603d" },
+  { background: "#edf1f7", border: "#9cacc4", text: "#4f617c" },
+  { background: "#f7ece8", border: "#c49a8d", text: "#7a5145" },
+  { background: "#f4f0dc", border: "#bdad70", text: "#716529" },
+  { background: "#eeeafa", border: "#aaa0c7", text: "#625779" },
+  { background: "#e7f2ef", border: "#8fb5a9", text: "#466a60" },
+  { background: "#f6edf3", border: "#bd98ac", text: "#79566a" },
+  { background: "#eee8df", border: "#b8a58c", text: "#6d604f" },
+];
+
+function getUserColor(job) {
+  const identity = String(job.createdByUid || job.createdByName || "staff");
+  let hash = 0;
+  for (let index = 0; index < identity.length; index += 1) {
+    hash = ((hash << 5) - hash + identity.charCodeAt(index)) | 0;
+  }
+  const color = USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+  return {
+    color,
+    style: `--user-bg:${color.background};--user-border:${color.border};--user-text:${color.text}`,
+  };
+}
+
+function groupSummaryBags(dayBags) {
+  const groups = new Map();
+  for (const job of dayBags) {
+    const reference = String(job.reference || "").trim();
+    const key = reference ? `reference:${reference}` : `job:${job.id}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(job);
+  }
+  return Array.from(groups.values()).sort((left, right) =>
+    Math.max(...right.map((job) => Number(job.createdAt) || 0))
+    - Math.max(...left.map((job) => Number(job.createdAt) || 0)));
+}
+
+function renderSummaryBagGroup(jobsInGroup) {
+  const first = jobsInGroup[0];
+  const reference = String(first.reference || "").trim();
+  if (!reference) return renderBagCard(first, false);
+  const sortedJobs = [...jobsInGroup].sort((left, right) =>
+    (Number(left.itemNumber) || 0) - (Number(right.itemNumber) || 0)
+    || (Number(left.createdAt) || 0) - (Number(right.createdAt) || 0));
+  const total = sortedJobs.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
+  const userColor = getUserColor(sortedJobs[0]);
+  const itemMarkup = sortedJobs.map((job) => {
+    const itemNumber = Number(job.itemNumber);
+    const itemLabel = Number.isInteger(itemNumber) && itemNumber >= 1 ? `Item ${itemNumber}` : "Job bag item";
+    const taskChips = (Array.isArray(job.tasks) ? job.tasks : Object.values(job.tasks || {})).map((task) => {
+      const quantity = task.sizeFactor || task.quantityLabel === "Sizes"
+        ? ` · ${task.quantity} sizes`
+        : task.characterFactor
+          ? ` · ${task.quantity} characters`
+          : task.quantity > 1 ? ` × ${task.quantity}` : "";
+      const manualPrice = task.id === "other" && Number.isFinite(Number(task.price))
+        ? ` · ${money(task.price)}`
+        : "";
+      return `<span class="detail-chip">${escapeHtml(task.name)}${quantity}${manualPrice}</span>`;
+    }).join("");
+    const descriptors = job.type === "custom"
+      ? ["Custom", job.customItem]
+      : [job.type === "chain" ? "Necklace" : `${job.type[0].toUpperCase()}${job.type.slice(1)}`, formatJobMaterial(job), job.widthName];
+    const staffColor = getUserColor(job);
+    return `
+      <div class="bag-group-item">
+        <div class="bag-group-item-heading">
+          <div>
+            <strong>${escapeHtml(itemLabel)}</strong>
+            <span>${escapeHtml(descriptors.filter(Boolean).join(" · "))}</span>
+          </div>
+          <strong class="bag-group-item-price">${money(job.total)}</strong>
+        </div>
+        <div class="bag-details">${taskChips}<span class="detail-chip">Repair time · ${escapeHtml(formatRepairTime(job.repairTimeMinutes))}</span></div>
+        ${job.notes ? `<p class="bag-notes">${escapeHtml(job.notes)}</p>` : ""}
+        <span class="staff-chip" style="${staffColor.style}">${escapeHtml(job.createdByName || "Staff")}</span>
+      </div>
+    `;
+  }).join("");
+  return `
+    <article class="bag-card bag-card-grouped" style="${userColor.style}">
+      <div class="bag-topline">
+        <div class="bag-title-wrap">
+          <p class="bag-reference">${escapeHtml(reference)}</p>
+          <p class="bag-subtitle">${sortedJobs.length} ${sortedJobs.length === 1 ? "item" : "items"}</p>
+        </div>
+        <strong class="bag-price">${money(total)}</strong>
+      </div>
+      <div class="bag-group-items">${itemMarkup}</div>
     </article>
   `;
 }
@@ -1132,7 +1226,7 @@ function activatePage(page) {
 function renderSelectedDay(dayKey, dayBags) {
   elements.selectedDayDate.dateTime = dayKey;
   elements.selectedDayDate.textContent = formatDay(dayKey);
-  elements.selectedDayList.innerHTML = dayBags.map((job) => renderBagCard(job, false)).join("");
+  elements.selectedDayList.innerHTML = groupSummaryBags(dayBags).map((jobsInGroup) => renderSummaryBagGroup(jobsInGroup)).join("");
   elements.selectedDayEmpty.hidden = dayBags.length > 0;
   elements.selectedDayPanel.hidden = false;
 }
@@ -1164,7 +1258,8 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
       const total = bags.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
       const date = new Date(`${dateKey}T12:00:00Z`);
       const hasFullMoon = fullMoonDates.has(dateKey);
-      const bagLabel = bags.length === 1 ? "1 job bag" : `${bags.length} job bags`;
+      const bagCount = groupSummaryBags(bags).length;
+      const bagLabel = bagCount === 1 ? "1 job bag" : `${bagCount} job bags`;
       const classes = [
         "calendar-day",
         dateKey.slice(0, 7) !== monthDates[0].slice(0, 7) ? "is-outside-month" : "",
