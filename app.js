@@ -186,6 +186,67 @@ function calendarGridDates(monthDates) {
   return dates;
 }
 
+function dateKeyFromUtcDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function nthWeekdayOfMonth(year, month, weekday, occurrence) {
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const day = 1 + (weekday - firstWeekday + 7) % 7 + (occurrence - 1) * 7;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function easterSundayDateKey(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = (h + l - 7 * m + 114) % 31 + 1;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function canadianHolidaysForGrid(calendarDates) {
+  const years = new Set(calendarDates.map((dateKey) => Number(dateKey.slice(0, 4))));
+  const holidays = new Map();
+  const addHoliday = (dateKey, label, icon, kind = "general") => holidays.set(dateKey, { label, icon, kind });
+  for (const year of years) {
+    addHoliday(`${year}-01-01`, "New Year's Day", "🎉");
+    addHoliday(`${year}-02-14`, "Valentine's Day", "💝", "valentine");
+    addHoliday(nthWeekdayOfMonth(year, 2, 1, 3), "Family Day", "🧡", "valentine");
+    const easterSunday = easterSundayDateKey(year);
+    const goodFriday = new Date(`${easterSunday}T12:00:00Z`);
+    goodFriday.setUTCDate(goodFriday.getUTCDate() - 2);
+    addHoliday(dateKeyFromUtcDate(goodFriday), "Good Friday", "✝️");
+    addHoliday(easterSunday, "Easter Sunday", "🐣");
+    addHoliday(nthWeekdayOfMonth(year, 5, 0, 2), "Mother's Day", "🌷", "valentine");
+    const victoriaDay = new Date(Date.UTC(year, 4, 24));
+    victoriaDay.setUTCDate(victoriaDay.getUTCDate() - (victoriaDay.getUTCDay() + 6) % 7);
+    addHoliday(dateKeyFromUtcDate(victoriaDay), "Victoria Day", "👑");
+    addHoliday(nthWeekdayOfMonth(year, 6, 0, 3), "Father's Day", "💙", "valentine");
+    addHoliday(`${year}-07-01`, "Canada Day", "🍁", "canada");
+    addHoliday(nthWeekdayOfMonth(year, 8, 1, 1), "Civic Holiday", "🏕️");
+    addHoliday(nthWeekdayOfMonth(year, 9, 1, 1), "Labour Day", "🛠️");
+    addHoliday(`${year}-09-30`, "National Day for Truth and Reconciliation", "🧡", "canada");
+    addHoliday(nthWeekdayOfMonth(year, 10, 1, 2), "Thanksgiving", "🦃");
+    addHoliday(`${year}-10-31`, "Halloween", "🎃", "halloween");
+    addHoliday(`${year}-11-11`, "Remembrance Day", "🌺", "canada");
+    addHoliday(`${year}-12-24`, "Christmas Eve", "🎄", "christmas");
+    addHoliday(`${year}-12-25`, "Christmas Day", "🎄", "christmas");
+    addHoliday(`${year}-12-26`, "Boxing Day", "🎁", "christmas");
+    addHoliday(`${year}-12-31`, "New Year's Eve", "🥂");
+  }
+  return holidays;
+}
+
 function fullMoonJulianDate(lunation) {
   // Meeus's phase approximation uses a half-step from each new-moon lunation.
   const k = lunation + 0.5;
@@ -1256,6 +1317,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
   elements.calendarMonthTotal.textContent = money(totalForDates(monthDates, bagsByDate));
   const calendarDays = calendarGridDates(monthDates);
   const fullMoonDates = fullMoonDatesForGrid(calendarDays);
+  const holidays = canadianHolidaysForGrid(calendarDays);
   const weekMarkup = [];
   for (let index = 0; index < calendarDays.length; index += 7) {
     const week = calendarDays.slice(index, index + 7);
@@ -1265,6 +1327,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
       const total = bags.reduce((sum, job) => sum + (Number(job.total) || 0), 0);
       const date = new Date(`${dateKey}T12:00:00Z`);
       const hasFullMoon = fullMoonDates.has(dateKey);
+      const holiday = holidays.get(dateKey);
       const bagCount = groupSummaryBags(bags).length;
       const bagLabel = bagCount === 1 ? "1 job bag" : `${bagCount} job bags`;
       let laborMarkup = "";
@@ -1289,10 +1352,13 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
         dateKey.slice(0, 7) !== monthDates[0].slice(0, 7) ? "is-outside-month" : "",
         dateKey === selectedDate ? "is-selected" : "",
         dateKey === today ? "is-today" : "",
+        holiday ? "is-holiday" : "",
+        holiday ? `is-holiday-${holiday.kind}` : "",
       ].filter(Boolean).join(" ");
       return `
-        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}${hasFullMoon ? ", Full moon" : ""}: ${money(total)}, ${bagLabel}" title="${hasFullMoon ? "Full moon · " : ""}${money(total)}">
-          <span class="calendar-day-number">${date.getUTCDate()}${hasFullMoon ? '<span class="full-moon-indicator" aria-hidden="true">🌕</span>' : ""}</span>
+        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}${hasFullMoon ? ", Full moon" : ""}${holiday ? `, ${escapeHtml(holiday.label)}` : ""}: ${money(total)}, ${bagLabel}" title="${hasFullMoon ? "Full moon · " : ""}${holiday ? `${holiday.label} · ` : ""}${money(total)}">
+          <span class="calendar-day-number">${date.getUTCDate()}${hasFullMoon ? '<span class="full-moon-indicator" aria-hidden="true"></span>' : ""}</span>
+          ${holiday ? `<span class="calendar-holiday"><span aria-hidden="true">${holiday.icon}</span><span>${escapeHtml(holiday.label)}</span></span>` : ""}
           <span class="calendar-day-total">${money(total)}</span>
           ${laborMarkup}
         </button>
