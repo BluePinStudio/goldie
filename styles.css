@@ -21,9 +21,12 @@ body {
   font-family: var(--sans);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 button, input, select, textarea { font: inherit; }
+input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; }
 button { cursor: pointer; }
 [hidden] { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
@@ -225,7 +228,6 @@ h2 { font: 600 21px/1.25 var(--serif); margin-bottom: 0; letter-spacing: -.2px; 
 .lookup-result-main span, .lookup-result-meta { color: #898b80; font-size: 10px; }
 .lookup-result-meta { flex-shrink: 0; }
 .lookup-detail-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
-.lookup-detail-heading .eyebrow { margin-bottom: 5px; }
 .lookup-detail-heading h2 { margin-bottom: 5px; overflow-wrap: anywhere; }
 .lookup-piece { margin-bottom: 0; color: #898b80; font-size: 11px; text-transform: capitalize; }
 .lookup-total { flex-shrink: 0; color: #424637; font: 600 21px var(--serif); }

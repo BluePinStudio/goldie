@@ -1007,37 +1007,6 @@ function normalizeReference(reference) {
   return String(reference || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function editDistance(left, right) {
-  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-  for (let row = 1; row <= left.length; row += 1) {
-    const current = [row];
-    for (let column = 1; column <= right.length; column += 1) {
-      current[column] = Math.min(
-        current[column - 1] + 1,
-        previous[column] + 1,
-        previous[column - 1] + (left[row - 1] === right[column - 1] ? 0 : 1),
-      );
-    }
-    previous = current;
-  }
-  return previous[right.length];
-}
-
-function fuzzyReferenceDistance(query, reference) {
-  if (reference.includes(query)) return 0;
-  const maxDistance = query.length >= 5 ? 2 : 1;
-  let best = maxDistance + 1;
-  const minWindow = Math.max(1, query.length - maxDistance);
-  const maxWindow = Math.min(reference.length, query.length + maxDistance);
-  for (let size = minWindow; size <= maxWindow; size += 1) {
-    for (let start = 0; start <= reference.length - size; start += 1) {
-      best = Math.min(best, editDistance(query, reference.slice(start, start + size)));
-      if (best === 0) return 0;
-    }
-  }
-  return best;
-}
-
 function searchLookupIndex(query) {
   if (lookupLoading) {
     elements.lookupResults.innerHTML = "";
@@ -1052,19 +1021,9 @@ function searchLookupIndex(query) {
     elements.lookupMessage.hidden = false;
     return;
   }
-  const results = Object.values(lookupIndex).flatMap((entry) => {
-    if (!normalizeReference(entry.reference)) return [];
-    const reference = normalizeReference(formatJobIdentifier(entry));
-    const distance = fuzzyReferenceDistance(normalized, reference);
-    const maxDistance = normalized.length >= 5 ? 2 : 1;
-    if (distance > maxDistance) return [];
-    const score = reference === normalized ? 0
-      : reference.startsWith(normalized) ? 1
-        : reference.includes(normalized) ? 2
-          : 3 + distance;
-    return [{ ...entry, score }];
-  }).sort((left, right) => left.score - right.score || Number(right.createdAt) - Number(left.createdAt));
-  const matches = results.slice(0, 50);
+  const matches = Object.values(lookupIndex)
+    .filter((entry) => normalizeReference(entry.reference) === normalized)
+    .sort((left, right) => Number(right.createdAt) - Number(left.createdAt));
   elements.lookupResults.innerHTML = matches.map((entry) => `
     <button class="lookup-result" type="button" data-lookup-id="${escapeHtml(entry.jobId)}" data-lookup-date="${escapeHtml(entry.date)}">
       <span class="lookup-result-main">
@@ -1074,10 +1033,8 @@ function searchLookupIndex(query) {
       <span class="lookup-result-meta">${entry.createdAt ? escapeHtml(new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" }).format(new Date(entry.createdAt))) : ""}</span>
     </button>
   `).join("");
-  elements.lookupMessage.textContent = !matches.length
-    ? "No matching references."
-    : matches.length === 50 ? "Showing the 50 closest matches." : "";
-  elements.lookupMessage.hidden = matches.length > 0 && matches.length < 50;
+  elements.lookupMessage.textContent = matches.length ? "" : "No matching references.";
+  elements.lookupMessage.hidden = matches.length > 0;
   elements.lookupResults.querySelectorAll("[data-lookup-id]").forEach((button) => {
     button.addEventListener("click", () => loadLookupJob(button.dataset.lookupDate, button.dataset.lookupId));
   });
@@ -1156,7 +1113,6 @@ function loadLookupJob(date, jobId) {
   elements.lookupDetail.innerHTML = `
       <div class="lookup-detail-heading">
         <div>
-          <p class="eyebrow">JOB BAG</p>
           <h2>${escapeHtml(formatJobIdentifier(job))}</h2>
           <p class="lookup-piece">${escapeHtml(piece)}</p>
         </div>
@@ -1166,10 +1122,6 @@ function loadLookupJob(date, jobId) {
         <div><dt>Logged</dt><dd>${escapeHtml(formatLoggedAt(job.createdAt))}</dd></div>
         <div><dt>By</dt><dd>${escapeHtml(job.createdByName || "Unknown")}</dd></div>
         <div><dt>Repair time</dt><dd>${escapeHtml(formatRepairTime(job.repairTimeMinutes))}</dd></div>
-        <div><dt>Reference</dt><dd>${escapeHtml(formatJobIdentifier(job))}</dd></div>
-        ${formatJobMaterial(job) ? `<div><dt>Material</dt><dd>${escapeHtml(formatJobMaterial(job))}</dd></div>` : ""}
-        ${job.widthName ? `<div><dt>Ring width</dt><dd>${escapeHtml(job.widthName)}</dd></div>` : ""}
-        ${job.customItem ? `<div><dt>Item</dt><dd>${escapeHtml(job.customItem)}</dd></div>` : ""}
       </dl>
       <h3 class="lookup-section-heading">Work</h3>
       ${tasks.length ? `<div class="lookup-tasks">${tasks.map((task) => {
