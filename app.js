@@ -1394,15 +1394,16 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
         for (const job of bags) {
           const identity = String(job.createdByUid || job.createdByName || "Staff");
           const name = String(job.createdByName || "Staff").trim() || "Staff";
-          const current = laborByUser.get(identity) || { name, minutes: 0 };
+          const current = laborByUser.get(identity) || { name, minutes: 0, total: 0 };
           current.minutes += Number(job.repairTimeMinutes) || 0;
+          current.total += Number(job.total) || 0;
           laborByUser.set(identity, current);
         }
         const users = Array.from(laborByUser.values())
           .sort((left, right) => right.minutes - left.minutes || left.name.localeCompare(right.name));
         laborMarkup = users.length ? `
           <span class="calendar-day-labor-users">${users.map((entry) =>
-            `${escapeHtml(entry.name)} · ${escapeHtml(formatRepairTime(entry.minutes))}`).join("<br>")}</span>
+            `${escapeHtml(entry.name)} · ${escapeHtml(formatRepairTime(entry.minutes))} · ${escapeHtml(money(entry.total))} contributed`).join("<br>")}</span>
         ` : "";
       }
       const classes = [
