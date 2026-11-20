@@ -1403,7 +1403,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
           .sort((left, right) => right.minutes - left.minutes || left.name.localeCompare(right.name));
         laborMarkup = users.length ? `
           <span class="calendar-day-labor-users">${users.map((entry) =>
-            `${escapeHtml(entry.name)} · ${escapeHtml(formatRepairTime(entry.minutes))} · ${escapeHtml(money(entry.total))}`).join("<br>")}</span>
+            `${escapeHtml(entry.name)} · ${escapeHtml(formatRepairTime(entry.minutes).replace(/(\d+h) /, "$1"))} ${escapeHtml(money(entry.total))}`).join("<br>")}</span>
         ` : "";
       }
       const classes = [

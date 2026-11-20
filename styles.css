@@ -331,6 +331,7 @@ h2 { font: 600 21px/1.25 var(--serif); margin-bottom: 0; letter-spacing: -.2px; 
   .calendar-day, .calendar-day-spacer { min-height: 92px; }
   .calendar-day { gap: 6px; padding: 6px 5px; border-radius: 6px; }
   .calendar-day-number { font-size: 11px; }
+  .calendar-day-labor-users { display: block; overflow: visible; font-size: clamp(7px, 2vw, 10px); line-height: 1.25; text-overflow: clip; overflow-wrap: anywhere; }
   .calendar-weekdays { font-size: 9px; }
   .intro { align-items: flex-start; flex-direction: column; padding: 18px 0 14px; }
   h1 { font-size: 25px; }
