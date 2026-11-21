@@ -462,6 +462,14 @@ function money(amount) {
   });
 }
 
+function calendarMoney(amount) {
+  return formatCurrency(amount, {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+    useGrouping: false,
+  });
+}
+
 async function fetchMetalSpotQuote(symbol) {
   const response = await fetch(`https://api.gold-api.com/price/${symbol}/CAD`, { cache: "no-store" });
   if (!response.ok) throw new Error(`${symbol} price request failed (HTTP ${response.status}).`);
@@ -1370,7 +1378,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
     year: "numeric",
     timeZone: "UTC",
   }).format(monthDate);
-  elements.calendarMonthTotal.textContent = money(totalForDates(monthDates, bagsByDate));
+  elements.calendarMonthTotal.textContent = calendarMoney(totalForDates(monthDates, bagsByDate));
   const calendarDays = calendarGridDates(monthDates);
   const fullMoonDates = fullMoonDatesForGrid(calendarDays);
   const holidays = configuredHolidaysForGrid(calendarDays, holidayDefinitions);
@@ -1403,7 +1411,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
           .sort((left, right) => right.minutes - left.minutes || left.name.localeCompare(right.name));
         laborMarkup = users.length ? `
           <span class="calendar-day-labor-users">${users.map((entry) =>
-            `${escapeHtml(entry.name)} · ${escapeHtml(formatRepairTime(entry.minutes).replace(/(\d+h) /, "$1"))} ${escapeHtml(money(entry.total))}`).join("<br>")}</span>
+            `${escapeHtml(entry.name)} · ${escapeHtml(formatRepairTime(entry.minutes).replace(/(\d+h) /, "$1"))} ${escapeHtml(calendarMoney(entry.total))}`).join("<br>")}</span>
         ` : "";
       }
       const classes = [
@@ -1415,12 +1423,12 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
         holidayKind ? `is-holiday-${holidayKind}` : "",
       ].filter(Boolean).join(" ");
       return `
-        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}${hasFullMoon ? ", Full moon" : ""}${holidayNames ? `, ${escapeHtml(holidayNames)}` : ""}: ${money(total)}, ${bagLabel}" title="${hasFullMoon ? "Full moon · " : ""}${holidayNames ? `${escapeHtml(holidayNames)} · ` : ""}${money(total)}">
+        <button class="${classes}" type="button" data-calendar-date="${dateKey}" aria-pressed="${dateKey === selectedDate}" aria-label="${formatDay(dateKey)}${hasFullMoon ? ", Full moon" : ""}${holidayNames ? `, ${escapeHtml(holidayNames)}` : ""}: ${calendarMoney(total)}, ${bagLabel}" title="${hasFullMoon ? "Full moon · " : ""}${holidayNames ? `${escapeHtml(holidayNames)} · ` : ""}${calendarMoney(total)}">
           <span class="calendar-day-number">${date.getUTCDate()}${hasFullMoon ? '<span class="full-moon-indicator" aria-hidden="true"></span>' : ""}</span>
           ${dayHolidays.length ? `<span class="calendar-holidays">${dayHolidays.map((holiday) => `
             <span class="calendar-holiday"><span aria-hidden="true">${escapeHtml(holiday.emoji)}</span><span>${escapeHtml(holiday.name)}</span></span>
           `).join("")}</span>` : ""}
-          <span class="calendar-day-total">${money(total)}</span>
+          <span class="calendar-day-total">${calendarMoney(total)}</span>
           ${laborMarkup}
         </button>
       `;
@@ -1430,7 +1438,7 @@ function renderCalendar(monthDates, selectedDate, bagsByDate) {
         ${dayMarkup}
         <div class="calendar-week-total">
           <span>Week total</span>
-          <strong>${money(totalForDates(weekDates, bagsByDate))}</strong>
+          <strong>${calendarMoney(totalForDates(weekDates, bagsByDate))}</strong>
         </div>
       </div>
     `);
