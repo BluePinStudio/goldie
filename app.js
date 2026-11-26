@@ -565,8 +565,8 @@ function taskRates(type, task) {
   }
   if (task.priceTable) {
     const table = rates[task.priceTable];
-    const price = task.sizeBased
-      ? table[necklaceWidth?.id]?.[material?.id]
+      const price = task.sizeBased
+        ? table[task.fixedSize || necklaceWidth?.id]?.[material?.id]
       : type === "ring"
         ? table[width?.id]?.[material?.id]
         : table[material?.id];
@@ -613,7 +613,7 @@ function initializeCatalog(data) {
   if (!data || !Array.isArray(data.materials) || !Array.isArray(data.goldColors) || !Array.isArray(data.ringWidths) || !Array.isArray(data.necklaceWidths) || !data.tasks || !data.ratesCAD) {
     throw new Error("The pricing catalog is missing materials, gold colours, ring or necklace widths, rates, or tasks.");
   }
-  for (const type of ["ring", "necklace", "bracelet", "watch"]) {
+  for (const type of ["ring", "necklace", "bracelet", "earring", "watch"]) {
     if (!Array.isArray(data.tasks[type]) || data.tasks[type].length === 0) {
       throw new Error(`The pricing catalog needs at least one ${type} task.`);
     }
@@ -656,6 +656,7 @@ function renderOptions() {
     ["ring", "Ring"],
     ["necklace", "Necklace"],
     ["bracelet", "Bracelet"],
+    ["earring", "Earring"],
     ["watch", "Watch"],
     ["custom", "Custom"],
   ].map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
