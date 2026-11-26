@@ -15,15 +15,15 @@
     { "id": "rose", "name": "Rose gold" }
   ],
   "ringWidths": [
-    { "id": "2mm", "name": "2 mm" },
-    { "id": "3mm", "name": "3 mm" },
-    { "id": "5mm", "name": "5 mm" },
-    { "id": "8mm", "name": "8 mm" }
+    { "id": "2mm", "name": "Under 2mm" },
+    { "id": "3mm", "name": "2-3mm" },
+    { "id": "5mm", "name": "3-5mm" },
+    { "id": "8mm", "name": "6-8mm" }
   ],
   "necklaceWidths": [
-    { "id": "2mm", "name": "2 mm" },
-    { "id": "4mm", "name": "4 mm" },
-    { "id": "6mm", "name": "6 mm" }
+    { "id": "2mm", "name": "Under 2mm" },
+    { "id": "4mm", "name": "2-4mm" },
+    { "id": "6mm", "name": "4-6mm" }
   ],
   "ratesCAD": {
     "ring": {
