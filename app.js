@@ -80,8 +80,10 @@ const elements = {
   customItem: document.querySelector("#custom-item"),
   customPrice: document.querySelector("#custom-price"),
   ringSection: document.querySelector("#ring-section"),
+  necklaceSection: document.querySelector("#necklace-section"),
   otherWorkLabel: document.querySelector("#other-work-label"),
   widthChoices: document.querySelector("#width-choices"),
+  necklaceWidthChoices: document.querySelector("#necklace-width-choices"),
   taskList: document.querySelector("#task-list"),
   otherWorkEnabled: document.querySelector("#other-work-enabled"),
   otherWorkFields: document.querySelector("#other-work-fields"),
@@ -549,6 +551,10 @@ function taskRates(type, task) {
   const width = type === "ring" && widthInput
     ? catalog.ringWidths.find((entry) => entry.id === widthInput.value)
     : null;
+  const necklaceWidthInput = elements.form.querySelector('input[name="necklace-width"]:checked');
+  const necklaceWidth = (type === "necklace" || type === "bracelet") && necklaceWidthInput
+    ? catalog.necklaceWidths.find((entry) => entry.id === necklaceWidthInput.value)
+    : null;
   if (task.materialPriceTable) {
     const price = rates[task.materialPriceTable]?.[material?.id];
     if (Number.isFinite(price)) return { unit: price, additional: null, setup: 0 };
@@ -559,9 +565,11 @@ function taskRates(type, task) {
   }
   if (task.priceTable) {
     const table = rates[task.priceTable];
-    const price = type === "ring"
-      ? table[width?.id]?.[material?.id]
-      : table[material?.id];
+    const price = task.sizeBased
+      ? table[necklaceWidth?.id]?.[material?.id]
+      : type === "ring"
+        ? table[width?.id]?.[material?.id]
+        : table[material?.id];
     if (price === undefined) return null;
     return typeof price === "number"
       ? { unit: price, additional: null, setup: 0 }
@@ -602,8 +610,8 @@ function escapeHtml(value) {
 }
 
 function initializeCatalog(data) {
-  if (!data || !Array.isArray(data.materials) || !Array.isArray(data.goldColors) || !Array.isArray(data.ringWidths) || !data.tasks || !data.ratesCAD) {
-    throw new Error("The pricing catalog is missing materials, gold colours, ring widths, rates, or tasks.");
+  if (!data || !Array.isArray(data.materials) || !Array.isArray(data.goldColors) || !Array.isArray(data.ringWidths) || !Array.isArray(data.necklaceWidths) || !data.tasks || !data.ratesCAD) {
+    throw new Error("The pricing catalog is missing materials, gold colours, ring or necklace widths, rates, or tasks.");
   }
   for (const type of ["ring", "necklace", "bracelet", "watch"]) {
     if (!Array.isArray(data.tasks[type]) || data.tasks[type].length === 0) {
@@ -665,6 +673,14 @@ function renderOptions() {
       </label>
     </div>
   `).join("");
+  elements.necklaceWidthChoices.innerHTML = catalog.necklaceWidths.map((width, index) => `
+    <div>
+      <input class="choice-input" type="radio" name="necklace-width" id="necklace-width-${escapeHtml(width.id)}" value="${escapeHtml(width.id)}" ${index === 1 ? "checked" : ""}>
+      <label class="choice-card" for="necklace-width-${escapeHtml(width.id)}">
+        <strong>${escapeHtml(width.name)}</strong>
+      </label>
+    </div>
+  `).join("");
   updateItemType();
 }
 
@@ -680,6 +696,7 @@ function updateItemType() {
   elements.materialField.hidden = isCustom || isWatch;
   elements.goldColourSection.hidden = isCustom || isWatch || !elements.material.value.startsWith("gold-");
   elements.ringSection.hidden = type !== "ring";
+  elements.necklaceSection.hidden = type !== "necklace" && type !== "bracelet";
   elements.customSection.hidden = !isCustom;
   elements.form.querySelector(".task-section").hidden = isCustom;
   if (isCustom) {
@@ -847,10 +864,13 @@ function getSelection() {
   const color = material?.id.startsWith("gold-")
     ? catalog.goldColors.find((entry) => entry.id === elements.goldColour.value)
     : null;
-  const widthInput = elements.form.querySelector('input[name="ring-width"]:checked');
-  const width = type === "ring" && widthInput
-    ? catalog.ringWidths.find((entry) => entry.id === widthInput.value)
-    : null;
+  const usesChainWidth = type === "necklace" || type === "bracelet";
+  const widthInput = elements.form.querySelector(`input[name="${usesChainWidth ? "necklace-width" : "ring-width"}"]:checked`);
+  const width = usesChainWidth && widthInput
+    ? catalog.necklaceWidths.find((entry) => entry.id === widthInput.value)
+    : type === "ring" && widthInput
+      ? catalog.ringWidths.find((entry) => entry.id === widthInput.value)
+      : null;
   const tasks = catalog.tasks[type].flatMap((task) => {
     const checkbox = elements.taskList.querySelector(`#task-${CSS.escape(task.id)}`);
     if (!checkbox?.checked) return [];
@@ -1654,6 +1674,7 @@ elements.goldColour.addEventListener("change", () => {
   updateEstimate();
 });
 elements.widthChoices.addEventListener("change", updateEstimate);
+elements.necklaceWidthChoices.addEventListener("change", updateEstimate);
 elements.customItem.addEventListener("input", updateEstimate);
 elements.customPrice.addEventListener("input", updateEstimate);
 elements.otherWorkEnabled.addEventListener("change", () => {

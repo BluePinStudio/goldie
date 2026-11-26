@@ -1,6 +1,6 @@
 {
   "currency": "CAD",
-  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace and bracelet soldering, rebuilding, ring sizing up, and retip prongs use first/additional pricing. Engraving has one setup fee and a per-character rate for rings, necklaces, and bracelets. Watch battery replacement is $25 and bracelet adjustment is $5. Enter custom-work prices on each job bag.",
+  "rateCardNote": "All rates in ratesCAD are explicit. Shank rates are listed by width and material; for widths above 2 mm, the first size uses the first rate and each additional size uses the additional rate. Necklace and bracelet soldering is priced by width and solder count; rebuilding, ring sizing up, and retip prongs use first/additional pricing. Engraving has one setup fee and a per-character rate for rings, necklaces, and bracelets. Watch battery replacement is $25 and bracelet adjustment is $5. Enter custom-work prices on each job bag.",
   "materials": [
     { "id": "gold-10k", "name": "10k gold" },
     { "id": "gold-14k", "name": "14k gold" },
@@ -19,6 +19,11 @@
     { "id": "3mm", "name": "3 mm" },
     { "id": "5mm", "name": "5 mm" },
     { "id": "8mm", "name": "8 mm" }
+  ],
+  "necklaceWidths": [
+    { "id": "2mm", "name": "2 mm" },
+    { "id": "4mm", "name": "4 mm" },
+    { "id": "6mm", "name": "6 mm" }
   ],
   "ratesCAD": {
     "ring": {
@@ -125,11 +130,27 @@
     },
     "necklace": {
       "solder": {
-        "silver": { "first": 30, "additional": 15 },
-        "gold-10k": { "first": 35, "additional": 25 },
-        "gold-14k": { "first": 40, "additional": 30 },
-        "gold-18k": { "first": 45, "additional": 35 },
-        "platinum": { "first": 50, "additional": 35 }
+        "2mm": {
+          "silver": { "first": 25, "additional": 10 },
+          "gold-10k": { "first": 30, "additional": 20 },
+          "gold-14k": { "first": 35, "additional": 25 },
+          "gold-18k": { "first": 40, "additional": 35 },
+          "platinum": { "first": 40, "additional": 30 }
+        },
+        "4mm": {
+          "silver": { "first": 30, "additional": 15 },
+          "gold-10k": { "first": 35, "additional": 25 },
+          "gold-14k": { "first": 40, "additional": 30 },
+          "gold-18k": { "first": 45, "additional": 40 },
+          "platinum": { "first": 50, "additional": 35 }
+        },
+        "6mm": {
+          "silver": { "first": 35, "additional": 20 },
+          "gold-10k": { "first": 40, "additional": 30 },
+          "gold-14k": { "first": 45, "additional": 35 },
+          "gold-18k": { "first": 50, "additional": 45 },
+          "platinum": { "first": 60, "additional": 40 }
+        }
       },
       "rebuild": {
         "silver": { "first": 45, "additional": 30 },
@@ -171,7 +192,7 @@
       { "id": "laser-engrave", "name": "Laser engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
     ],
     "necklace": [
-      { "id": "solder", "name": "Solder", "priceTable": "solder", "quantityLabel": "Solders" },
+      { "id": "solder", "name": "Solder", "priceTable": "solder", "sizeBased": true, "quantityLabel": "Solders" },
       { "id": "rebuild", "name": "Rebuild", "materialPriceTable": "rebuild", "quantityLabel": "Rebuilds" },
       { "id": "chain-polish", "name": "Polish", "priceKey": "chain-polish" },
       { "id": "chain-refinish", "name": "Refinish", "priceKey": "chain-refinish" },
@@ -180,7 +201,7 @@
       { "id": "necklace-engrave", "name": "Engraving", "rateGroup": "engraving", "setupPriceKey": "setup-fee", "priceKey": "per-character", "characterFactor": true }
     ],
     "bracelet": [
-      { "id": "solder", "name": "Solder", "rateGroup": "necklace", "priceTable": "solder", "quantityLabel": "Solders" },
+      { "id": "solder", "name": "Solder", "rateGroup": "necklace", "priceTable": "solder", "sizeBased": true, "quantityLabel": "Solders" },
       { "id": "rebuild", "name": "Rebuild", "rateGroup": "necklace", "materialPriceTable": "rebuild", "quantityLabel": "Rebuilds" },
       { "id": "chain-polish", "name": "Polish", "rateGroup": "necklace", "priceKey": "chain-polish" },
       { "id": "chain-refinish", "name": "Refinish", "rateGroup": "necklace", "priceKey": "chain-refinish" },
